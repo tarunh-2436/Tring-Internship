@@ -1,6 +1,6 @@
 # IAM User
 resource "aws_iam_user" "test1" {
-  name = "TerraformIAMTest1"
+  name = var.iam_user_name
 }
 
 # Access Key
