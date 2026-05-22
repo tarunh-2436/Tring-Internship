@@ -42,3 +42,12 @@ resource "aws_iam_user_policy" "test1_policy" {
 
   policy = data.aws_iam_policy_document.test1_policy.json
 }
+
+output "access_key" {
+  value = aws_iam_access_key.test1.id
+}
+
+output "secret_key" {
+  value     = aws_iam_access_key.test1.secret
+  sensitive = true
+}
