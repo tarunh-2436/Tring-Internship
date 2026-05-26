@@ -1,3 +1,7 @@
-output "website_url" {
-  value = aws_s3_bucket_website_configuration.static_site.website_endpoint
+output "bucket_name" {
+  value = module.my_bucket.bucket_name
+}
+
+output "bucket_arn" {
+  value = module.my_bucket.bucket_arn
 }
