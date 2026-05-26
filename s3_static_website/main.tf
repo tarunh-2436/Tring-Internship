@@ -14,8 +14,8 @@ provider "aws" {
 module "my_bucket" {
   source = "./modules/s3_bucket"
 
-  bucket_name       = "tarun-demo-bucket-2026-001"
-  enable_versioning = true
-  enable_encryption = true
-  public_bucket     = false
+  bucket_name       = var.bucket_name
+  enable_versioning = var.enable_versioning
+  enable_encryption = var.enable_encryption
+  public_bucket     = var.public_bucket
 }
