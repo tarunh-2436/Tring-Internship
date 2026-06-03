@@ -1,5 +1,5 @@
-output "api_url" {
-  value = aws_apigatewayv2_api.feedback_api.api_endpoint
+output "api_endpoint" {
+  value = "${aws_apigatewayv2_api.feedback_api.api_endpoint}/prod/feedback"
 }
 
 output "website_url" {

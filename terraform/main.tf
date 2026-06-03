@@ -143,7 +143,7 @@ resource "aws_lambda_function" "feedback_api" {
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.13"
   memory_size   = 256
-  timeout       = 30
+  timeout       = 10
 
   filename = "${path.module}/../lambda/lambda_function.zip"
 

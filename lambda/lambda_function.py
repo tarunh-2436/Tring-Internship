@@ -80,20 +80,9 @@ def retrieve_feedback(event):
             print(f"Retrieved object key : {feedback['Key']}")
 
             response = s3.get_object(Bucket=BUCKET_NAME, Key=feedback["Key"])
-
-            print("Object fetched")
-
             raw_content = response["Body"].read()
-
-            print("Object read")
-
             decoded_content = raw_content.decode("utf-8")
-
-            print("Object decoded")
-
             feedback_content = json.loads(decoded_content)
-
-            print("JSON loaded")
 
             feedbacks.append(feedback_content)
 
