@@ -86,6 +86,8 @@ def retrieve_feedback(event):
 
             feedbacks.append(feedback_content)
 
+        feedbacks.sort(key=lambda x: x["timestamp"], reverse=True)
+
         return {
             "statusCode": 200,
             "body": json.dumps(feedbacks),
