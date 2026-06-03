@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feedback API</title>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <h1>Feedback API</h1>
+
+    <form>
+
+        <label for="name">Name:</label><br>
+
+        <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Enter your name">
+
+        <br><br>
+
+        <label for="feedback">Enter your feedback:</label><br>
+
+        <textarea
+            id="feedback"
+            name="feedback"
+            rows="4"
+            cols="50"
+            placeholder="Enter your feedback">
+        </textarea>
+
+        <br><br>
+
+        <button
+            type="button"
+            onclick="submitFeedback()">
+            Submit Feedback
+        </button>
+
+        <button type="button" onclick="fetchFeedback()">
+            Download Feedback
+        </button>
+
+    </form>
+
+    <div id="message"></div>
+
+    <script src="scripts.js"></script>
+
+</body>
+</html>

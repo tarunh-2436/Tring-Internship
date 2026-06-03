@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 30px;
+    line-height: 1.5;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+label {
+    font-weight: bold;
+}
+
+input,
+textarea {
+    margin-top: 5px;
+    margin-bottom: 15px;
+    padding: 8px;
+}
+
+button {
+    padding: 8px 12px;
+    margin-top: 10px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+#message {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+input,
+textarea {
+    width: 400px;
+    max-width: 100%;
+}
