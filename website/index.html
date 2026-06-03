@@ -1,54 +1,53 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Feedback API</title>
+    <head>
+        <title>Feedback API</title>
 
-    <link rel="stylesheet" href="styles.css">
-</head>
+        <link rel="stylesheet" href="styles.css">
+    </head>
 
-<body>
+    <body>
 
-    <h1>Feedback API</h1>
+        <h1>Feedback API</h1>
 
-    <form>
+        <form>
 
-        <label for="name">Name:</label><br>
+            <label for="name">Name:</label><br>
 
-        <input
-            type="text"
-            id="name"
-            name="name"
-            placeholder="Enter your name">
+            <input
+                type="text"
+                id="name"
+                name="name"
+                placeholder="Enter your name">
 
-        <br><br>
+            <br><br>
 
-        <label for="feedback">Enter your feedback:</label><br>
+            <label for="feedback">Enter your feedback:</label><br>
 
-        <textarea
-            id="feedback"
-            name="feedback"
-            rows="4"
-            cols="50"
-            placeholder="Enter your feedback">
-        </textarea>
+            <textarea
+                id="feedback"
+                name="feedback"
+                rows="4"
+                cols="50"
+                placeholder="Enter your feedback"></textarea>
 
-        <br><br>
+            <br><br>
 
-        <button
-            type="button"
-            onclick="submitFeedback()">
-            Submit Feedback
-        </button>
+            <button
+                type="button"
+                onclick="submitFeedback()">
+                Submit Feedback
+            </button>
 
-        <button type="button" onclick="fetchFeedback()">
-            Download Feedback
-        </button>
+            <button type="button" onclick="fetchFeedback()">
+                Download Feedback
+            </button>
 
-    </form>
+        </form>
 
-    <div id="message"></div>
+        <div id="message"></div>
 
-    <script src="scripts.js"></script>
+        <script src="scripts.js"></script>
 
-</body>
+    </body>
 </html>

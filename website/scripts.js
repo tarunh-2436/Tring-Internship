@@ -2,8 +2,8 @@ const API_URL =
   "https://sa2mb6latf.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
 async function submitFeedback() {
-  const name = document.getElementById("name").value;
-  const feedback = document.getElementById("feedback").value;
+  const name = document.getElementById("name").value.trim();
+  const feedback = document.getElementById("feedback").value.trim();
 
   console.log("Submitting feedback:", { name, feedback });
 
