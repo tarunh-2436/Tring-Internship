@@ -69,6 +69,26 @@ def submit_feedback(event):
 def retrieve_feedback(event):
 
     try:
+
+        claims = (
+            event.get("requestContext", {})
+            .get("authorizer", {})
+            .get("jwt", {})
+            .get("claims", {})
+        )
+
+        groups = claims.get("cognito:groups", [])
+
+        if isinstance(groups, str):
+
+            groups = groups.strip("[]").split(",")
+
+            groups = [g.strip() for g in groups if g.strip()]
+
+        is_admin = "admins" in groups
+
+        print(f"Admin Access: {is_admin}")
+
         retrieved_feedbacks = s3.list_objects_v2(
             Bucket=BUCKET_NAME, Prefix="feedbacks/"
         )
@@ -77,12 +97,15 @@ def retrieve_feedback(event):
 
         for feedback in retrieved_feedbacks.get("Contents", []):
 
-            print(f"Retrieved object key : {feedback['Key']}")
-
             response = s3.get_object(Bucket=BUCKET_NAME, Key=feedback["Key"])
+
             raw_content = response["Body"].read()
-            decoded_content = raw_content.decode("utf-8")
-            feedback_content = json.loads(decoded_content)
+
+            feedback_content = json.loads(raw_content.decode("utf-8"))
+
+            if not is_admin:
+
+                feedback_content["name"] = "Anonymous"
 
             feedbacks.append(feedback_content)
 
@@ -94,7 +117,9 @@ def retrieve_feedback(event):
         }
 
     except Exception as e:
+
         print("Error retrieving feedbacks:", str(e))
+
         return {
             "statusCode": 500,
             "body": json.dumps({"message": "Error retrieving feedbacks"}),

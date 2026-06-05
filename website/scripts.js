@@ -75,10 +75,26 @@ function getCurrentUser() {
   }
 }
 
+function getUserRole() {
 
-// ==========================================
-// COGNITO CALLBACK HANDLER
-// ==========================================
+  const user =
+    getCurrentUser();
+
+  if (!user) {
+    return "guest";
+  }
+
+  const groups =
+    user["cognito:groups"] || [];
+
+  if (
+    groups.includes("admins")
+  ) {
+    return "admin";
+  }
+
+  return "user";
+}
 
 async function handleAuthCallback() {
 
@@ -181,11 +197,40 @@ function updateUserStatus() {
     statusElement.innerHTML =
       "Browsing as Guest";
 
+    toggleRoleBasedUI();
+
     return;
   }
 
+  const role =
+    getUserRole();
+
   statusElement.innerHTML =
-    `Logged in as ${user.email}`;
+    `Logged in as
+     ${user.email}
+     (${role})`;
+
+  toggleRoleBasedUI();
+}
+
+function toggleRoleBasedUI() {
+
+  const role =
+    getUserRole();
+
+  const adminButton =
+    document.getElementById(
+      "admin-export"
+    );
+
+  if (!adminButton) {
+    return;
+  }
+
+  adminButton.style.display =
+    role === "admin"
+      ? "inline-block"
+      : "none";
 }
 
 async function submitFeedback() {
@@ -268,8 +313,55 @@ async function fetchFeedback() {
 
   try {
 
+    const accessToken =
+      localStorage.getItem(
+        "access_token"
+      );
+
+    if (!accessToken) {
+
+      alert(
+        "Please login to view feedback."
+      );
+
+      return;
+    }
+
     const response =
-      await fetch(API_URL);
+      await fetch(API_URL, {
+
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`
+        }
+      });
+
+    if (response.status === 401) {
+
+      alert(
+        "Your session has expired or you are not logged in."
+      );
+
+      return;
+    }
+
+    if (response.status === 403) {
+
+      alert(
+        "You do not have permission to access this resource."
+      );
+
+      return;
+    }
+
+    if (!response.ok) {
+
+      alert(
+        `Server returned ${response.status}`
+      );
+
+      return;
+    }
 
     const feedbacks =
       await response.json();
@@ -317,6 +409,10 @@ async function fetchFeedback() {
   } catch (error) {
 
     console.error(error);
+
+    alert(
+      "Unable to connect to server."
+    );
 
     document.getElementById(
       "message"

@@ -238,10 +238,16 @@ resource "aws_apigatewayv2_api" "feedback_api" {
 }
 
 resource "aws_apigatewayv2_route" "get_feedback_route" {
-  api_id    = aws_apigatewayv2_api.feedback_api.id
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
   route_key = "GET /feedback"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "post_feedback_route" {
@@ -257,6 +263,28 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
   integration_uri  = aws_lambda_function.feedback_api.invoke_arn
 
   payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_authorizer" "cognito" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  authorizer_type = "JWT"
+
+  identity_sources = [
+    "$request.header.Authorization"
+  ]
+
+  name = "cognito-authorizer"
+
+  jwt_configuration {
+
+    audience = [
+      aws_cognito_user_pool_client.web_client.id
+    ]
+
+    issuer = "https://cognito-idp.us-east-1.amazonaws.com/${aws_cognito_user_pool.feedback_users.id}"
+  }
 }
 
 resource "aws_apigatewayv2_stage" "prod" {
@@ -322,5 +350,15 @@ resource "aws_cognito_user_pool_client" "web_client" {
 
 resource "aws_cognito_user_pool_domain" "feedback_domain" {
   domain       = "tarun-feedback-api-001"
+  user_pool_id = aws_cognito_user_pool.feedback_users.id
+}
+
+resource "aws_cognito_user_group" "users" {
+  name         = "users"
+  user_pool_id = aws_cognito_user_pool.feedback_users.id
+}
+
+resource "aws_cognito_user_group" "admins" {
+  name         = "admins"
   user_pool_id = aws_cognito_user_pool.feedback_users.id
 }
