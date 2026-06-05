@@ -10,17 +10,33 @@
 
         <h1>Feedback API</h1>
 
+        <div class="auth-section">
+
+            <button
+                type="button"
+                onclick="login()">
+                Login
+            </button>
+
+            <button
+                type="button"
+                onclick="signup()">
+                Sign Up
+            </button>
+
+            <button
+                type="button"
+                onclick="logout()">
+                Log Out
+            </button>
+
+        </div>
+
+        <div id="user-status" class="status-box">
+            Browsing as Guest
+        </div>
+
         <form>
-
-            <label for="name">Name:</label><br>
-
-            <input
-                type="text"
-                id="name"
-                name="name"
-                placeholder="Enter your name">
-
-            <br><br>
 
             <label for="feedback">Enter your feedback:</label><br>
 
@@ -31,6 +47,16 @@
                 cols="50"
                 placeholder="Enter your feedback"></textarea>
 
+            <br>
+
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    id="anonymous"
+                    checked>
+                Submit anonymously
+            </label>
+
             <br><br>
 
             <button
@@ -38,12 +64,30 @@
                 onclick="submitFeedback()">
                 Submit Feedback
             </button>
-
-            <button type="button" onclick="fetchFeedback()">
+            
+            <button
+                type="button"
+                onclick="fetchFeedback()">
                 Download Feedback
             </button>
 
+            <button
+                type="button"
+                disabled>
+                Admin Export
+            </button>
+
         </form>
+
+        
+
+        <hr>
+
+        <h2>Feedback Preview</h2>
+
+        <div id="feedback-preview">
+            No feedback loaded.
+        </div>
 
         <div id="message"></div>
 

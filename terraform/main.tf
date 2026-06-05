@@ -24,34 +24,42 @@ resource "aws_s3_bucket" "storage" {
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_policy" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.website.arn}/*"
-      }
+data "aws_iam_policy_document" "website_bucket_policy" {
+  statement {
+    actions = [
+      "s3:GetObject"
     ]
-  })
+
+    resources = [
+      "${aws_s3_bucket.website.arn}/*"
+    ]
+
+    principals {
+      type = "Service"
+      identifiers = [
+        "cloudfront.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values = [
+        "${aws_cloudfront_distribution.this.arn}"
+      ]
+    }
+  }
 }
 
-resource "aws_s3_bucket_website_configuration" "website" {
+resource "aws_s3_bucket_policy" "website_bucket_policy" {
   bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
+  policy = data.aws_iam_policy_document.website_bucket_policy.json
 }
 
 resource "aws_s3_bucket_public_access_block" "storage" {
@@ -85,6 +93,59 @@ resource "aws_s3_bucket_policy" "storage" {
       }
     ]
   })
+}
+
+resource "aws_cloudfront_origin_access_control" "this" {
+  name                              = "website-oac"
+  description                       = "OAC for private S3 bucket"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+data "aws_cloudfront_cache_policy" "optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+resource "aws_cloudfront_distribution" "this" {
+
+  enabled             = true
+  default_root_object = "index.html"
+
+  origin {
+    domain_name              = aws_s3_bucket.website.bucket_regional_domain_name
+    origin_id                = "website-origin"
+    origin_access_control_id = aws_cloudfront_origin_access_control.this.id
+  }
+
+  default_cache_behavior {
+
+    allowed_methods = [
+      "GET",
+      "HEAD",
+    ]
+
+    cached_methods = [
+      "GET",
+      "HEAD"
+    ]
+
+    target_origin_id = "website-origin"
+
+    viewer_protocol_policy = "redirect-to-https"
+
+    cache_policy_id = data.aws_cloudfront_cache_policy.optimized.id
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
 
 resource "aws_iam_role" "lambda_execution" {
@@ -202,4 +263,64 @@ resource "aws_apigatewayv2_stage" "prod" {
   api_id      = aws_apigatewayv2_api.feedback_api.id
   name        = "prod"
   auto_deploy = true
+}
+
+resource "aws_cognito_user_pool" "feedback_users" {
+  name = "feedback-users"
+
+  username_attributes = ["email"]
+
+  auto_verified_attributes = ["email"]
+
+  password_policy {
+    minimum_length    = 8
+    require_uppercase = true
+    require_lowercase = true
+    require_numbers   = true
+    require_symbols   = true
+  }
+}
+
+resource "aws_cognito_user_pool_client" "web_client" {
+
+  name = "feedback-web-client"
+
+  user_pool_id = aws_cognito_user_pool.feedback_users.id
+
+  generate_secret = false
+
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
+
+  allowed_oauth_flows_user_pool_client = true
+
+  allowed_oauth_flows = [
+    "code"
+  ]
+
+  allowed_oauth_scopes = [
+    "openid",
+    "email",
+    "profile"
+  ]
+
+  callback_urls = [
+    "https://${aws_cloudfront_distribution.this.domain_name}/"
+  ]
+
+  logout_urls = [
+    "https://${aws_cloudfront_distribution.this.domain_name}/"
+  ]
+
+  supported_identity_providers = [
+    "COGNITO"
+  ]
+}
+
+resource "aws_cognito_user_pool_domain" "feedback_domain" {
+  domain       = "tarun-feedback-api-001"
+  user_pool_id = aws_cognito_user_pool.feedback_users.id
 }

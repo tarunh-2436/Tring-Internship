@@ -1,85 +1,384 @@
 const API_URL =
-  "https://sa2mb6latf.execute-api.us-east-1.amazonaws.com/prod/feedback";
+  "https://yiyp4ogr3b.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
-async function submitFeedback() {
-  const name = document.getElementById("name").value.trim();
-  const feedback = document.getElementById("feedback").value.trim();
+const COGNITO_DOMAIN =
+  "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
 
-  console.log("Submitting feedback:", { name, feedback });
+const CLIENT_ID = 
+"4avm29f5ejkr77i8ng51sjjeti";
 
-  if (!name || !feedback) {
-    document.getElementById("message").innerHTML = "Please fill all fields";
+const REDIRECT_URI = 
+"https://d2ax45v2f4i3k6.cloudfront.net/";
+
+function login() {
+
+  const loginUrl =
+    `${COGNITO_DOMAIN}/login` +
+    `?client_id=${CLIENT_ID}` +
+    `&response_type=code` +
+    `&scope=openid+email+profile` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+  window.location.href = loginUrl;
+}
+
+function signup() {
+
+  const signupUrl =
+    `${COGNITO_DOMAIN}/signup` +
+    `?client_id=${CLIENT_ID}` +
+    `&response_type=code` +
+    `&scope=openid+email+profile` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+  window.location.href = signupUrl;
+}
+
+function logout() {
+
+  localStorage.removeItem("id_token");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+
+  const logoutUrl =
+    `${COGNITO_DOMAIN}/logout` +
+    `?client_id=${CLIENT_ID}` +
+    `&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+  window.location.href = logoutUrl;
+}
+
+function parseJwt(token) {
+
+  return JSON.parse(
+    atob(
+      token.split(".")[1]
+    )
+  );
+}
+
+function getCurrentUser() {
+
+  const token =
+    localStorage.getItem("id_token");
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    return parseJwt(token);
+  }
+  catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+
+// ==========================================
+// COGNITO CALLBACK HANDLER
+// ==========================================
+
+async function handleAuthCallback() {
+
+  const params =
+    new URLSearchParams(window.location.search);
+
+  const code =
+    params.get("code");
+
+  if (!code) {
+    updateUserStatus();
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `${COGNITO_DOMAIN}/oauth2/token`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded"
+          },
+
+          body: new URLSearchParams({
+            grant_type:
+              "authorization_code",
+
+            client_id:
+              CLIENT_ID,
+
+            code:
+              code,
+
+            redirect_uri:
+              REDIRECT_URI
+          })
+        }
+      );
+
+    const tokens =
+      await response.json();
+
+    console.log(
+      "Cognito Tokens:",
+      tokens
+    );
+
+    localStorage.setItem(
+      "id_token",
+      tokens.id_token
+    );
+
+    localStorage.setItem(
+      "access_token",
+      tokens.access_token
+    );
+
+    localStorage.setItem(
+      "refresh_token",
+      tokens.refresh_token
+    );
+
+    window.history.replaceState(
+      {},
+      document.title,
+      "/"
+    );
+
+    updateUserStatus();
+
+  } catch (error) {
+
+    console.error(
+      "Authentication Error:",
+      error
+    );
+  }
+}
+
+function updateUserStatus() {
+
+  const statusElement =
+    document.getElementById(
+      "user-status"
+    );
+
+  if (!statusElement) {
+    return;
+  }
+
+  const user =
+    getCurrentUser();
+
+  if (!user) {
+
+    statusElement.innerHTML =
+      "Browsing as Guest";
 
     return;
   }
+
+  statusElement.innerHTML =
+    `Logged in as ${user.email}`;
+}
+
+async function submitFeedback() {
+
+  const feedback =
+    document.getElementById(
+      "feedback"
+    ).value.trim();
+
+  const anonymous =
+    document.getElementById(
+      "anonymous"
+    ).checked;
+
+  if (!feedback) {
+
+    document.getElementById(
+      "message"
+    ).innerHTML =
+      "Please enter feedback.";
+
+    return;
+  }
+
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const user =
+      getCurrentUser();
 
-      body: JSON.stringify({
-        name: name,
-        feedback: feedback,
-      }),
-    });
+    const response =
+      await fetch(API_URL, {
 
-    const result = await response.json();
-    console.log("Feedback submission result:", result);
+        method: "POST",
 
-    if (response.ok) {
-      document.getElementById("message").innerHTML = result.message;
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
 
-      document.getElementById("name").value = "";
-      document.getElementById("feedback").value = "";
-    } else {
-      document.getElementById("message").innerHTML = result.message;
-    }
+        body: JSON.stringify({
+
+          name:
+            anonymous
+              ? "Anonymous"
+              : (
+                  user
+                    ? user.email
+                    : "Anonymous"
+                ),
+
+          feedback:
+            feedback
+        })
+      });
+
+    const result =
+      await response.json();
+
+    document.getElementById(
+      "message"
+    ).innerHTML =
+      result.message;
+
+    document.getElementById(
+      "feedback"
+    ).value = "";
+
   } catch (error) {
-    console.error("Error submitting feedback:", error);
 
-    document.getElementById("message").innerHTML =
+    console.error(error);
+
+    document.getElementById(
+      "message"
+    ).innerHTML =
       "Unable to connect to server.";
   }
 }
 
 async function fetchFeedback() {
+
   try {
-    const response = await fetch(API_URL);
-    
-    if (!response.ok) {
-    const result = await response.json();
 
-    document.getElementById("message").textContent =
-        result.message;
+    const response =
+      await fetch(API_URL);
 
-    return;
-    }
+    const feedbacks =
+      await response.json();
 
-    const feedbacks = await response.json();
+    renderFeedbackPreview(
+      feedbacks
+    );
 
-    const feedbackJson = JSON.stringify(feedbacks, null, 4);
+    const blob =
+      new Blob(
+        [
+          JSON.stringify(
+            feedbacks,
+            null,
+            4
+          )
+        ],
+        {
+          type:
+            "application/json"
+        }
+      );
 
-    const blob = new Blob([feedbackJson], {
-      type: "application/json",
-    });
+    const url =
+      URL.createObjectURL(
+        blob
+      );
 
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
+    const link =
+      document.createElement(
+        "a"
+      );
 
     link.href = url;
 
-    link.download = "feedbacks.json";
+    link.download =
+      "feedbacks.json";
 
     link.click();
 
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(
+      url
+    );
+
   } catch (error) {
-    console.error("Error fetching feedback:", error);
-    document.getElementById("message").innerHTML =
+
+    console.error(error);
+
+    document.getElementById(
+      "message"
+    ).innerHTML =
       "Unable to connect to server.";
   }
 }
+
+function renderFeedbackPreview(
+  feedbacks
+) {
+
+  const preview =
+    document.getElementById(
+      "feedback-preview"
+    );
+
+  if (!preview) {
+    return;
+  }
+
+  if (
+    !feedbacks ||
+    feedbacks.length === 0
+  ) {
+
+    preview.innerHTML =
+      "No feedback found.";
+
+    return;
+  }
+
+  let html = "";
+
+  feedbacks.forEach(
+    (item) => {
+
+      html += `
+        <div class="feedback-card">
+
+          <p>
+            <strong>Feedback:</strong>
+            ${item.feedback || ""}
+          </p>
+
+          <p>
+            <strong>Submitted By:</strong>
+            Anonymous
+          </p>
+
+        </div>
+      `;
+    }
+  );
+
+  preview.innerHTML = html;
+}
+
+window.onload = async () => {
+
+  await handleAuthCallback();
+
+  updateUserStatus();
+
+};

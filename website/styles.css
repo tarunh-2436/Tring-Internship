@@ -8,15 +8,31 @@ h1 {
     margin-bottom: 20px;
 }
 
+h2 {
+    margin-top: 30px;
+}
+
+.auth-section {
+    margin-bottom: 15px;
+}
+
+.status-box {
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    background-color: #f5f5f5;
+}
+
 label {
     font-weight: bold;
 }
 
-input,
 textarea {
     margin-top: 5px;
     margin-bottom: 15px;
     padding: 8px;
+    width: 400px;
+    max-width: 100%;
 }
 
 button {
@@ -26,13 +42,22 @@ button {
     cursor: pointer;
 }
 
+.checkbox-label {
+    font-weight: normal;
+}
+
 #message {
     margin-top: 15px;
     font-weight: bold;
 }
 
-input,
-textarea {
-    width: 400px;
-    max-width: 100%;
+.feedback-card {
+    border: 1px solid #ddd;
+    padding: 12px;
+    margin-bottom: 10px;
+    background-color: #fafafa;
+}
+
+#feedback-preview {
+    margin-top: 15px;
 }
