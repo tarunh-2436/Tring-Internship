@@ -257,34 +257,55 @@ async function submitFeedback() {
 
   try {
 
-    const user =
-      getCurrentUser();
+    const endpoint =
+      anonymous
+        ? `${API_URL}/anonymous`
+        : API_URL;
+
+    const headers = {
+      "Content-Type": "application/json"
+    };
+
+    if (!anonymous) {
+
+      const accessToken =
+        localStorage.getItem(
+          "access_token"
+        );
+
+      if (!accessToken) {
+
+        document.getElementById(
+          "message"
+        ).innerHTML =
+          "Please login or submit anonymously.";
+
+        return;
+      }
+
+      headers.Authorization =
+        `Bearer ${accessToken}`;
+    }
 
     const response =
-      await fetch(API_URL, {
+      await fetch(
+        endpoint,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            feedback: feedback
+          })
+        }
+      );
 
-        method: "POST",
+    if (!response.ok) {
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+      const text =
+        await response.text();
 
-        body: JSON.stringify({
-
-          name:
-            anonymous
-              ? "Anonymous"
-              : (
-                  user
-                    ? user.email
-                    : "Anonymous"
-                ),
-
-          feedback:
-            feedback
-        })
-      });
+      throw new Error(text);
+    }
 
     const result =
       await response.json();
@@ -298,6 +319,10 @@ async function submitFeedback() {
       "feedback"
     ).value = "";
 
+    document.getElementById(
+      "anonymous"
+    ).checked = false;
+
   } catch (error) {
 
     console.error(error);
@@ -308,6 +333,7 @@ async function submitFeedback() {
       "Unable to connect to server.";
   }
 }
+
 
 async function fetchFeedback() {
 
@@ -455,12 +481,7 @@ function renderFeedbackPreview(
 
           <p>
             <strong>Feedback:</strong>
-            ${item.feedback || ""}
-          </p>
-
-          <p>
-            <strong>Submitted By:</strong>
-            Anonymous
+            ${item.content || ""}
           </p>
 
         </div>

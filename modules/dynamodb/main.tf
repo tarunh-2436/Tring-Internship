@@ -17,25 +17,25 @@ resource aws_dynamodb_table "this" {
   }
 
   attribute {
-    name = "last_updated"
+    name = "lastUpdated"
     type = "S"
   }
 
   attribute {
-    name = "entity_type"
+    name = "entityType"
     type = "S"
   }
 
   local_secondary_index {
     name               = "last_updated_index"
-    range_key          = "last_updated"
+    range_key          = "lastUpdated"
     projection_type    = "ALL"
   }
 
   global_secondary_index {
     name               = "admin_last_updated_index"
-    hash_key           = "entity_type"
-    range_key          = "last_updated"
+    hash_key           = "entityType"
+    range_key          = "lastUpdated"
     projection_type    = "ALL"
   }
 }

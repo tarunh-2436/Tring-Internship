@@ -289,8 +289,23 @@ resource "aws_apigatewayv2_route" "get_feedback_route" {
 }
 
 resource "aws_apigatewayv2_route" "post_feedback_route" {
-  api_id    = aws_apigatewayv2_api.feedback_api.id
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
   route_key = "POST /feedback"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_feedback_anonymous_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "POST /feedback/anonymous"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
@@ -391,11 +406,6 @@ resource "aws_cognito_user_pool_domain" "feedback_domain" {
   user_pool_id = aws_cognito_user_pool.feedback_users.id
 }
 
-resource "aws_cognito_user_group" "users" {
-  name         = "users"
-  user_pool_id = aws_cognito_user_pool.feedback_users.id
-}
-
 resource "aws_cognito_user_group" "admins" {
   name         = "admins"
   user_pool_id = aws_cognito_user_pool.feedback_users.id
@@ -404,6 +414,6 @@ resource "aws_cognito_user_group" "admins" {
 module "dynamodb" {
   source     = "../modules/dynamodb"
   table_name = var.dynamodb_table_name
-  hash_key   = "userId"
+  hash_key   = "ownerId"
   range_key  = "feedbackId"
 }
