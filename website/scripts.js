@@ -1,501 +1,646 @@
 const API_URL =
-  "https://eolass3b4k.execute-api.us-east-1.amazonaws.com/prod/feedback";
+    "https://eolass3b4k.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
 const COGNITO_DOMAIN =
-  "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
+    "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
 
-const CLIENT_ID = 
-"7euj00ss96mont8obdp64egv3l";
+const CLIENT_ID =
+    "7euj00ss96mont8obdp64egv3l";
 
-const REDIRECT_URI = 
-"https://d2q7n43zipfzc0.cloudfront.net/";
+const REDIRECT_URI =
+    "https://d2q7n43zipfzc0.cloudfront.net/";
+
+/* ==========================================
+                AUTHENTICATION
+========================================== */
 
 function login() {
 
-  const loginUrl =
-    `${COGNITO_DOMAIN}/login` +
-    `?client_id=${CLIENT_ID}` +
-    `&response_type=code` +
-    `&scope=openid+email+profile` +
-    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    const loginUrl =
+        `${COGNITO_DOMAIN}/login` +
+        `?client_id=${CLIENT_ID}` +
+        `&response_type=code` +
+        `&scope=openid+email+profile` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-  window.location.href = loginUrl;
+    window.location.href = loginUrl;
 }
 
 function signup() {
 
-  const signupUrl =
-    `${COGNITO_DOMAIN}/signup` +
-    `?client_id=${CLIENT_ID}` +
-    `&response_type=code` +
-    `&scope=openid+email+profile` +
-    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    const signupUrl =
+        `${COGNITO_DOMAIN}/signup` +
+        `?client_id=${CLIENT_ID}` +
+        `&response_type=code` +
+        `&scope=openid+email+profile` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-  window.location.href = signupUrl;
+    window.location.href = signupUrl;
 }
 
 function logout() {
 
-  localStorage.removeItem("id_token");
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
 
-  const logoutUrl =
-    `${COGNITO_DOMAIN}/logout` +
-    `?client_id=${CLIENT_ID}` +
-    `&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    const logoutUrl =
+        `${COGNITO_DOMAIN}/logout` +
+        `?client_id=${CLIENT_ID}` +
+        `&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-  window.location.href = logoutUrl;
+    window.location.href = logoutUrl;
 }
 
 function parseJwt(token) {
 
-  return JSON.parse(
-    atob(
-      token.split(".")[1]
-    )
-  );
+    return JSON.parse(
+        atob(
+            token.split(".")[1]
+        )
+    );
 }
 
 function getCurrentUser() {
 
-  const token =
-    localStorage.getItem("id_token");
+    const token =
+        localStorage.getItem(
+            "id_token"
+        );
 
-  if (!token) {
-    return null;
-  }
+    if (!token)
+        return null;
 
-  try {
-    return parseJwt(token);
-  }
-  catch (err) {
-    console.error(err);
-    return null;
-  }
+    try {
+
+        return parseJwt(token);
+
+    }
+
+    catch {
+
+        return null;
+    }
 }
 
 function getUserRole() {
 
-  const user =
-    getCurrentUser();
+    const user =
+        getCurrentUser();
 
-  if (!user) {
-    return "guest";
-  }
+    if (!user)
+        return "guest";
 
-  const groups =
-    user["cognito:groups"] || [];
+    const groups =
+        user["cognito:groups"] || [];
 
-  if (
-    groups.includes("admins")
-  ) {
-    return "admin";
-  }
+    if (
+        groups.includes("admins")
+    ) {
 
-  return "user";
+        return "admin";
+    }
+
+    return "user";
 }
 
 async function handleAuthCallback() {
 
-  const params =
-    new URLSearchParams(window.location.search);
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
 
-  const code =
-    params.get("code");
+    const code =
+        params.get("code");
 
-  if (!code) {
-    updateUserStatus();
-    return;
-  }
+    if (!code)
+        return;
 
-  try {
+    try {
 
-    const response =
-      await fetch(
-        `${COGNITO_DOMAIN}/oauth2/token`,
-        {
-          method: "POST",
+        const response =
+            await fetch(
 
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded"
-          },
+                `${COGNITO_DOMAIN}/oauth2/token`,
 
-          body: new URLSearchParams({
-            grant_type:
-              "authorization_code",
+                {
 
-            client_id:
-              CLIENT_ID,
+                    method: "POST",
 
-            code:
-              code,
+                    headers: {
 
-            redirect_uri:
-              REDIRECT_URI
-          })
-        }
-      );
+                        "Content-Type":
+                            "application/x-www-form-urlencoded"
 
-    const tokens =
-      await response.json();
+                    },
 
-    console.log(
-      "Cognito Tokens:",
-      tokens
-    );
+                    body:
+                        new URLSearchParams({
 
-    localStorage.setItem(
-      "id_token",
-      tokens.id_token
-    );
+                            grant_type:
+                                "authorization_code",
 
-    localStorage.setItem(
-      "access_token",
-      tokens.access_token
-    );
+                            client_id:
+                                CLIENT_ID,
 
-    localStorage.setItem(
-      "refresh_token",
-      tokens.refresh_token
-    );
+                            code:
+                                code,
 
-    window.history.replaceState(
-      {},
-      document.title,
-      "/"
-    );
+                            redirect_uri:
+                                REDIRECT_URI
 
-    updateUserStatus();
+                        })
 
-  } catch (error) {
+                }
 
-    console.error(
-      "Authentication Error:",
-      error
-    );
-  }
+            );
+
+        const tokens =
+            await response.json();
+
+        localStorage.setItem(
+            "id_token",
+            tokens.id_token
+        );
+
+        localStorage.setItem(
+            "access_token",
+            tokens.access_token
+        );
+
+        localStorage.setItem(
+            "refresh_token",
+            tokens.refresh_token
+        );
+
+        window.history.replaceState(
+            {},
+            document.title,
+            "/"
+        );
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+    }
+
 }
+
+/* ==========================================
+                USER STATUS
+========================================== */
 
 function updateUserStatus() {
 
-  const statusElement =
-    document.getElementById(
-      "user-status"
-    );
+    const element =
+        document.getElementById(
+            "user-status"
+        );
 
-  if (!statusElement) {
-    return;
-  }
+    if (!element)
+        return;
 
-  const user =
-    getCurrentUser();
+    const user =
+        getCurrentUser();
 
-  if (!user) {
+    if (!user) {
 
-    statusElement.innerHTML =
-      "Browsing as Guest";
+        element.innerHTML =
+            "Browsing as Guest";
+
+    }
+
+    else {
+
+        element.innerHTML =
+            `Logged in as ${user.email} (${getUserRole()})`;
+
+    }
 
     toggleRoleBasedUI();
-
-    return;
-  }
-
-  const role =
-    getUserRole();
-
-  statusElement.innerHTML =
-    `Logged in as
-     ${user.email}
-     (${role})`;
-
-  toggleRoleBasedUI();
 }
 
 function toggleRoleBasedUI() {
 
-  const role =
-    getUserRole();
+    const adminButton =
+        document.getElementById(
+            "admin-export"
+        );
 
-  const adminButton =
-    document.getElementById(
-      "admin-export"
+    if (!adminButton)
+        return;
+
+    adminButton.style.display =
+        getUserRole() === "admin"
+            ? "block"
+            : "none";
+}
+
+/* ==========================================
+                NAVIGATION
+========================================== */
+
+function renderTemplate(id) {
+
+    const content =
+        document.getElementById(
+            "content"
+        );
+
+    const template =
+        document.getElementById(
+            id
+        );
+
+    content.innerHTML =
+        "";
+
+    content.appendChild(
+        template.content.cloneNode(true)
+    );
+}
+
+function showHome() {
+
+    renderTemplate(
+        "home-template"
+    );
+}
+
+function showSubmit() {
+
+    renderTemplate(
+        "submit-template"
+    );
+}
+
+function showMyFeedback() {
+
+    renderTemplate(
+        "my-feedback-template"
     );
 
-  if (!adminButton) {
-    return;
-  }
-
-  adminButton.style.display =
-    role === "admin"
-      ? "inline-block"
-      : "none";
+    fetchFeedback();
 }
+
+function showAdminDashboard() {
+
+    if (
+        getUserRole() !==
+        "admin"
+    ) {
+
+        alert(
+            "Admin access required."
+        );
+
+        return;
+    }
+
+    renderTemplate(
+        "admin-template"
+    );
+
+    fetchFeedback();
+}
+
+function initializeNavigation() {
+
+    document
+        .getElementById(
+            "nav-dashboard"
+        )
+        .onclick =
+        showHome;
+
+    document
+        .getElementById(
+            "nav-submit"
+        )
+        .onclick =
+        showSubmit;
+
+    document
+        .getElementById(
+            "nav-my-feedback"
+        )
+        .onclick =
+        showMyFeedback;
+
+    document
+        .getElementById(
+            "admin-export"
+        )
+        .onclick =
+        showAdminDashboard;
+}
+
+/* ==========================================
+                SUBMIT
+========================================== */
 
 async function submitFeedback() {
 
-  const feedback =
-    document.getElementById(
-      "feedback"
-    ).value.trim();
+    const feedback =
+        document
+            .getElementById(
+                "feedback"
+            )
+            .value
+            .trim();
 
-  const anonymous =
-    document.getElementById(
-      "anonymous"
-    ).checked;
+    const anonymous =
+        document
+            .getElementById(
+                "anonymous"
+            )
+            .checked;
 
-  if (!feedback) {
+    if (!feedback) {
 
-    document.getElementById(
-      "message"
-    ).innerHTML =
-      "Please enter feedback.";
+        document
+            .getElementById(
+                "message"
+            )
+            .innerHTML =
+            "Please enter feedback.";
 
-    return;
-  }
-
-  try {
+        return;
+    }
 
     const endpoint =
-      anonymous
-        ? `${API_URL}/anonymous`
-        : API_URL;
+        anonymous
+            ? `${API_URL}/anonymous`
+            : API_URL;
 
     const headers = {
-      "Content-Type": "application/json"
+
+        "Content-Type":
+            "application/json"
+
     };
 
     if (!anonymous) {
 
-      const accessToken =
-        localStorage.getItem(
-          "access_token"
-        );
+        const token =
+            localStorage.getItem(
+                "access_token"
+            );
 
-      if (!accessToken) {
+        if (!token) {
 
-        document.getElementById(
-          "message"
-        ).innerHTML =
-          "Please login or submit anonymously.";
+            document
+                .getElementById(
+                    "message"
+                )
+                .innerHTML =
+                "Please login or submit anonymously.";
 
-        return;
-      }
-
-      headers.Authorization =
-        `Bearer ${accessToken}`;
-    }
-
-    const response =
-      await fetch(
-        endpoint,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            feedback: feedback
-          })
+            return;
         }
-      );
 
-    if (!response.ok) {
+        headers.Authorization =
+            `Bearer ${token}`;
 
-      const text =
-        await response.text();
-
-      throw new Error(text);
     }
 
-    const result =
-      await response.json();
+    try {
 
-    document.getElementById(
-      "message"
-    ).innerHTML =
-      result.message;
+        const response =
+            await fetch(
 
-    document.getElementById(
-      "feedback"
-    ).value = "";
+                endpoint,
 
-    document.getElementById(
-      "anonymous"
-    ).checked = false;
+                {
 
-  } catch (error) {
+                    method:
+                        "POST",
 
-    console.error(error);
+                    headers,
 
-    document.getElementById(
-      "message"
-    ).innerHTML =
-      "Unable to connect to server.";
-  }
+                    body:
+                        JSON.stringify({
+
+                            feedback:
+                                feedback
+
+                        })
+
+                }
+
+            );
+
+        const result =
+            await response.json();
+
+        document
+            .getElementById(
+                "message"
+            )
+            .innerHTML =
+            result.message;
+
+        document
+            .getElementById(
+                "feedback"
+            )
+            .value =
+            "";
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        document
+            .getElementById(
+                "message"
+            )
+            .innerHTML =
+            "Unable to connect.";
+
+    }
+
 }
 
+/* ==========================================
+                FETCH
+========================================== */
 
 async function fetchFeedback() {
 
-  try {
+    const token =
+        localStorage.getItem(
+            "access_token"
+        );
 
-    const accessToken =
-      localStorage.getItem(
-        "access_token"
-      );
+    if (!token) {
 
-    if (!accessToken) {
+        alert(
+            "Please login."
+        );
 
-      alert(
-        "Please login to view feedback."
-      );
-
-      return;
+        return;
     }
 
-    const response =
-      await fetch(API_URL, {
+    try {
 
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`
+        const response =
+            await fetch(
+
+                API_URL,
+
+                {
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${token}`
+
+                    }
+
+                }
+
+            );
+
+        if (!response.ok) {
+
+            alert(
+                "Unable to load feedback."
+            );
+
+            return;
+
         }
-      });
 
-    if (response.status === 401) {
+        const feedbacks =
+            await response.json();
 
-      alert(
-        "Your session has expired or you are not logged in."
-      );
+        renderFeedbackPreview(
+            feedbacks
+        );
 
-      return;
     }
 
-    if (response.status === 403) {
+    catch (err) {
 
-      alert(
-        "You do not have permission to access this resource."
-      );
+        console.error(err);
 
-      return;
     }
 
-    if (!response.ok) {
-
-      alert(
-        `Server returned ${response.status}`
-      );
-
-      return;
-    }
-
-    const feedbacks =
-      await response.json();
-
-    renderFeedbackPreview(
-      feedbacks
-    );
-
-    const blob =
-      new Blob(
-        [
-          JSON.stringify(
-            feedbacks,
-            null,
-            4
-          )
-        ],
-        {
-          type:
-            "application/json"
-        }
-      );
-
-    const url =
-      URL.createObjectURL(
-        blob
-      );
-
-    const link =
-      document.createElement(
-        "a"
-      );
-
-    link.href = url;
-
-    link.download =
-      "feedbacks.json";
-
-    link.click();
-
-    URL.revokeObjectURL(
-      url
-    );
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(
-      "Unable to connect to server."
-    );
-
-    document.getElementById(
-      "message"
-    ).innerHTML =
-      "Unable to connect to server.";
-  }
 }
+
+/* ==========================================
+                RENDER
+========================================== */
 
 function renderFeedbackPreview(
-  feedbacks
+    feedbacks
 ) {
 
-  const preview =
-    document.getElementById(
-      "feedback-preview"
-    );
+    const preview =
+        document.getElementById(
+            "feedback-preview"
+        );
 
-  if (!preview) {
-    return;
-  }
-
-  if (
-    !feedbacks ||
-    feedbacks.length === 0
-  ) {
+    if (!preview)
+        return;
 
     preview.innerHTML =
-      "No feedback found.";
+        "";
 
-    return;
-  }
+    if (
+        feedbacks.length === 0
+    ) {
 
-  let html = "";
+        preview.innerHTML =
+            "<p>No feedback found.</p>";
 
-  feedbacks.forEach(
-    (item) => {
-
-      html += `
-        <div class="feedback-card">
-
-          <p>
-            <strong>Feedback:</strong>
-            ${item.content || ""}
-          </p>
-
-        </div>
-      `;
+        return;
     }
-  );
 
-  preview.innerHTML = html;
+    feedbacks.forEach(
+
+        item => {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+            card.className =
+                "feedback-card";
+
+            card.innerHTML =
+
+                `
+                <h3>
+                    ${item.title || "Untitled"}
+                </h3>
+
+                <p>
+
+                    ${item.content || ""}
+
+                </p>
+
+                <small>
+
+                    ${item.lastUpdated || ""}
+
+                </small>
+
+                <div class="feedback-actions">
+
+                    <button>
+
+                        View
+
+                    </button>
+
+                    <button>
+
+                        Edit
+
+                    </button>
+
+                    <button>
+
+                        Delete
+
+                    </button>
+
+                </div>
+                `;
+
+            preview.appendChild(
+                card
+            );
+
+        }
+
+    );
+
 }
 
-window.onload = async () => {
+/* ==========================================
+                INITIALIZE
+========================================== */
 
-  await handleAuthCallback();
+window.onload =
+async function () {
 
-  updateUserStatus();
+    await handleAuthCallback();
+
+    updateUserStatus();
+
+    initializeNavigation();
+
+    showHome();
 
 };

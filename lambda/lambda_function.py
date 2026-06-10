@@ -49,14 +49,13 @@ def lambda_handler(event, context):
 
     path = event["rawPath"]
 
+    if method == "POST" and path.endswith("/anonymous"):
+        return create_feedback(event, anonymous=True)
+
     if method == "POST":
-
-        if path.endswith("/anonymous"):
-            return create_feedback(event, anonymous=True)
-
         return create_feedback(event, anonymous=False)
 
-    if method == "GET":
+    if method == "GET" and path.endswith("/feedback"):
         return get_feedback(event)
 
     return {"statusCode": 405, "body": json.dumps({"message": "Method not allowed"})}
