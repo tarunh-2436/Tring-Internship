@@ -1,5 +1,6 @@
 import json
 import boto3
+from boto3.dynamodb.conditions import Key
 import uuid
 import os
 from datetime import datetime, timezone
@@ -56,7 +57,7 @@ def lambda_handler(event, context):
         return create_feedback(event, anonymous=False)
 
     if method == "GET":
-        return get_all_feedback(event)
+        return get_feedback(event)
 
     return {"statusCode": 405, "body": json.dumps({"message": "Method not allowed"})}
 
@@ -127,41 +128,48 @@ def create_feedback(event, anonymous=False):
         }
 
 
-def get_all_feedback(event):
+def get_feedback(event):
+
+    owner_info = get_owner_information(event)
+
+    if owner_info["isAdmin"]:
+        return get_admin_feedback(owner_info)
+    return get_user_feedback(owner_info)
+
+
+def get_admin_feedback(owner_info):
 
     try:
 
-        owner_info = get_owner_information(event)
-
-        if owner_info["ownerType"] == ANONYMOUS:
-            return {
-                "statusCode": 401,
-                "body": json.dumps({"message": "Authentication required"}),
-            }
-
-        is_admin = owner_info["isAdmin"]
-
-        response = table.scan()
-
-        feedbacks = []
-
-        for item in response.get("Items", []):
-
-            if is_admin:
-                feedbacks.append(item)
-
-            elif item["ownerId"] == owner_info["ownerId"]:
-                feedbacks.append(item)
-
-        feedbacks.sort(
-            key=lambda x: x["lastUpdated"],
-            reverse=True,
+        response = table.query(
+            IndexName="admin_last_updated_index",
+            KeyConditionExpression=Key("entityType").eq(ENTITY_TYPE),
+            ScanIndexForward=False,
         )
 
+        return {"statusCode": 200, "body": json.dumps(response.get("Items", []))}
+
+    except Exception as e:
+
+        print(str(e))
+
         return {
-            "statusCode": 200,
-            "body": json.dumps(feedbacks),
+            "statusCode": 500,
+            "body": json.dumps({"message": "Error retrieving feedback"}),
         }
+
+
+def get_user_feedback(owner_info):
+
+    try:
+
+        response = table.query(
+            IndexName="last_updated_index",
+            KeyConditionExpression=Key("ownerId").eq(owner_info["ownerId"]),
+            ScanIndexForward=False,
+        )
+
+        return {"statusCode": 200, "body": json.dumps(response.get("Items", []))}
 
     except Exception as e:
 
