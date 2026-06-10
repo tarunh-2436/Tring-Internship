@@ -166,26 +166,63 @@ resource "aws_iam_role" "lambda_execution" {
 }
 
 resource "aws_iam_policy" "lambda_policy" {
-  name = "lambda-s3-access-policy"
+
+  name = "lambda-backend-policy"
 
   policy = jsonencode({
+
     Version = "2012-10-17"
+
     Statement = [
+
       {
         Effect = "Allow"
+
         Action = [
           "s3:PutObject",
           "s3:GetObject",
+          "s3:DeleteObject"
         ]
-        Resource = "${aws_s3_bucket.storage.arn}/*"
+
+        Resource = [
+          "${aws_s3_bucket.storage.arn}/*"
+        ]
       },
+
       {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = "${aws_s3_bucket.storage.arn}"
+        Effect = "Allow"
+
+        Action = [
+          "s3:ListBucket"
+        ]
+
+        Resource = [
+          aws_s3_bucket.storage.arn
+        ]
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+
+        Resource = [
+          module.dynamodb.table_arn,
+          "${module.dynamodb.table_arn}/index/*"
+        ]
       }
+
     ]
+
   })
+
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_execution_attachment" {
@@ -204,7 +241,7 @@ resource "aws_lambda_function" "feedback_api" {
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.13"
   memory_size   = 256
-  timeout       = 10
+  timeout       = 30
 
   filename = "${path.module}/../lambda/lambda_function.zip"
 
@@ -213,6 +250,7 @@ resource "aws_lambda_function" "feedback_api" {
   environment {
     variables = {
       STORAGE_BUCKET = aws_s3_bucket.storage.bucket
+      DYNAMODB_TABLE = module.dynamodb.table_name
     }
   }
 }
@@ -361,4 +399,11 @@ resource "aws_cognito_user_group" "users" {
 resource "aws_cognito_user_group" "admins" {
   name         = "admins"
   user_pool_id = aws_cognito_user_pool.feedback_users.id
+}
+
+module "dynamodb" {
+  source     = "../modules/dynamodb"
+  table_name = var.dynamodb_table_name
+  hash_key   = "userId"
+  range_key  = "feedbackId"
 }

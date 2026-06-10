@@ -27,4 +27,12 @@ output "cognito_client_id" {
 
 output "cognito_domain" {
   value = aws_cognito_user_pool_domain.feedback_domain.domain
-} 
+}
+
+output "feedback_table_name" {
+  value = module.dynamodb.table_name
+}
+
+output "feedback_table_arn" {
+  value = module.dynamodb.table_arn
+}

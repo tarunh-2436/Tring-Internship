@@ -15,3 +15,9 @@ variable "website_bucket_name" {
   type        = string
   default     = "tarun-feedback-website-bucket-001"
 }
+
+variable "dynamodb_table_name" {
+  description = "Name of the Feedback DynamoDB table"
+  type        = string
+  default     = "Feedback"
+}

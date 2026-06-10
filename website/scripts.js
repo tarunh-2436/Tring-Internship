@@ -1,14 +1,14 @@
 const API_URL =
-  "https://yiyp4ogr3b.execute-api.us-east-1.amazonaws.com/prod/feedback";
+  "https://eolass3b4k.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
 const COGNITO_DOMAIN =
   "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
 
 const CLIENT_ID = 
-"4avm29f5ejkr77i8ng51sjjeti";
+"7euj00ss96mont8obdp64egv3l";
 
 const REDIRECT_URI = 
-"https://d2ax45v2f4i3k6.cloudfront.net/";
+"https://d2q7n43zipfzc0.cloudfront.net/";
 
 function login() {
 
