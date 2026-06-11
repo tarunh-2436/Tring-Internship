@@ -31,7 +31,11 @@ const AppState = {
 
     selectedFeedback: null,
 
-    modalMode: "view"
+    modalMode: "view",
+
+    newAttachments: [],
+
+    deletedAttachments: []
 
 };
 
@@ -650,6 +654,28 @@ function showSubmit() {
 
     );
 
+    const fileInput =
+
+        document.getElementById(
+
+            "feedback-files"
+
+        );
+
+    if (!fileInput) {
+
+        return;
+
+    }
+
+    fileInput.addEventListener(
+
+        "change",
+
+        renderSelectedAttachments
+
+    );
+
 }
 
 
@@ -701,6 +727,77 @@ function showAdminDashboard() {
 
 }
 
+function renderSelectedAttachments() {
+
+    const container =
+
+        document.getElementById(
+
+            "selected-attachments"
+
+        );
+
+    const input =
+
+        document.getElementById(
+
+            "feedback-files"
+
+        );
+
+    if (
+
+        !container ||
+
+        !input
+
+    ) {
+
+        return;
+
+    }
+
+    const files =
+
+        Array.from(
+
+            input.files
+
+        );
+
+    if (
+
+        files.length === 0
+
+    ) {
+
+        container.innerHTML =
+
+            "No attachments selected";
+
+        return;
+
+    }
+
+    container.innerHTML =
+
+        files
+
+            .map(
+
+                file =>
+
+                `<div class="attachment-chip">
+
+                    📎 ${file.name}
+
+                </div>`
+
+            )
+
+            .join("");
+
+}
 
 /********************************************************************
                     LOAD DATA
@@ -1313,6 +1410,16 @@ async function downloadFeedback(
     const accessToken =
         getAccessToken();
 
+    if (!accessToken) {
+
+        alert(
+            "Please login."
+        );
+
+        return;
+
+    }
+
     try {
 
         const response =
@@ -1326,6 +1433,7 @@ async function downloadFeedback(
                     headers: {
 
                         Authorization:
+
                             `Bearer ${accessToken}`
 
                     }
@@ -1337,50 +1445,59 @@ async function downloadFeedback(
         if (!response.ok) {
 
             throw new Error(
+
                 await response.text()
+
             );
 
         }
 
-        const blob =
-            await response.blob();
+        const result =
 
-        const url =
-            window.URL.createObjectURL(
-                blob
-            );
+            await response.json();
 
-        const link =
-            document.createElement(
-                "a"
-            );
+        console.log(result);
 
-        link.href =
-            url;
+        /*
+        =========================
+            DOWNLOAD TXT FILE
+        =========================
+        */
 
-        link.download =
-            `feedback-${feedback.feedbackId}.txt`;
+        downloadTextFile(
 
-        document.body.appendChild(
-            link
+            result.filename,
+
+            result.content
+
         );
 
-        link.click();
+        /*
+        =========================
+        DOWNLOAD ATTACHMENTS
+        =========================
+        */
 
-        link.remove();
+        await downloadAttachments(
 
-        window.URL.revokeObjectURL(
-            url
+            result.attachments
+
         );
 
     }
 
     catch (error) {
 
-        console.error(error);
+        console.error(
+
+            error
+
+        );
 
         alert(
+
             "Unable to download feedback."
+
         );
 
     }
@@ -1417,61 +1534,186 @@ function openFeedbackModal(
 
 function closeFeedbackModal() {
 
+    AppState.newAttachments = [];
+
+    AppState.deletedAttachments = [];
+
     document.getElementById(
+
         "feedbackModal"
+
     ).style.display =
+
         "none";
 
 }
 
 
 function populateFeedbackModal(
+
     feedback
+
 ) {
 
     document.getElementById(
+
         "feedbackTitle"
+
     ).value =
+
         feedback.title || "";
 
     document.getElementById(
+
         "feedbackContent"
+
     ).value =
+
         feedback.content || "";
 
     document.getElementById(
+
         "feedbackCreated"
+
     ).value =
+
         feedback.createdAt || "";
 
     document.getElementById(
+
         "feedbackUpdated"
+
     ).value =
+
         feedback.lastUpdated || "";
 
-    const attachments =
+    const container =
+
         document.getElementById(
+
             "feedbackAttachments"
+
         );
 
+    container.innerHTML = "";
+
+    const existing =
+
+        feedback.attachments || [];
+
+    existing.forEach(
+
+        attachment => {
+
+            if (
+
+                AppState.deletedAttachments.some(
+
+                    file =>
+
+                        file.filename ===
+
+                        attachment.filename
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            let html =
+
+                `<div class="modal-attachment">
+
+                    📎 ${attachment.filename}
+                
+                </div>`;
+
+            if (
+
+                AppState.modalMode ===
+
+                "edit"
+
+            ) {
+
+                html +=
+
+                `
+
+                <button
+
+                    onclick="removeExistingAttachment(
+
+                        '${attachment.filename}'
+
+                    )">
+
+                    ✕
+                </button>
+
+                `;
+
+            }
+
+            html +=
+
+                `</div>`;
+
+            container.innerHTML +=
+
+                html;
+
+        }
+
+    );
+
+    AppState.newAttachments.forEach(
+
+        file => {
+
+            container.innerHTML +=
+
+            `
+
+            <div class="modal-attachment">
+
+                🆕
+
+                ${file.name}
+
+                <button
+
+                    onclick="removeNewAttachment(
+
+                        '${file.name}'
+
+                    )">
+
+                    ✕
+
+                </button>
+
+            </div>
+
+            `;
+
+        }
+
+    );
+
     if (
-        feedback.attachments &&
-        feedback.attachments.length > 0
+
+        container.innerHTML ===
+
+        ""
+
     ) {
 
-        attachments.innerHTML =
-            feedback.attachments
-                .map(
-                    file =>
-                        `<div>📎 ${file}</div>`
-                )
-                .join("");
+        container.innerHTML =
 
-    }
-
-    else {
-
-        attachments.innerHTML =
             "No attachments";
 
     }
@@ -1554,6 +1796,16 @@ function setModalMode(
         saveButton.style.display =
             "inline-block";
 
+        document.getElementById(
+
+            "modalUploadSection"
+
+        ).style.display =
+
+            "flex";
+
+        initializeModalAttachments();            
+
     }
 
     else {
@@ -1582,6 +1834,18 @@ function setModalMode(
         saveButton.style.display =
             "none";
 
+        document.getElementById(
+
+            "modalUploadSection"
+
+        ).style.display =
+
+            "none";
+
+        AppState.newAttachments = [];
+
+        AppState.deletedAttachments = [];            
+
     }
 
 }
@@ -1589,13 +1853,9 @@ function setModalMode(
 
 function switchToEditMode() {
 
-    if (
-        !AppState.selectedFeedback
-    ) {
+    AppState.newAttachments = [];
 
-        return;
-
-    }
+    AppState.deletedAttachments = [];
 
     openFeedbackModal(
 
@@ -1632,7 +1892,9 @@ function deleteSelectedFeedback() {
 function downloadSelectedFeedback() {
 
     if (
+
         !AppState.selectedFeedback
+
     ) {
 
         return;
@@ -1642,6 +1904,118 @@ function downloadSelectedFeedback() {
     downloadFeedback(
 
         AppState.selectedFeedback.feedbackId
+
+    );
+
+}
+
+function initializeModalAttachments() {
+
+    const input =
+
+        document.getElementById(
+
+            "modalAttachmentInput"
+
+        );
+
+    if (!input) {
+
+        return;
+
+    }
+
+    input.onchange = function () {
+
+        const files =
+
+            Array.from(
+
+                input.files
+
+            );
+
+        AppState.newAttachments.push(
+
+            ...files
+
+        );
+
+        populateFeedbackModal(
+
+            AppState.selectedFeedback
+
+        );
+
+    };
+
+}
+
+function removeExistingAttachment(
+
+    filename
+
+) {
+
+    const attachment =
+
+        AppState.selectedFeedback
+
+            .attachments
+
+            .find(
+
+                file =>
+
+                    file.filename ===
+
+                    filename
+
+            );
+
+    if (
+
+        attachment
+
+    ) {
+
+        AppState.deletedAttachments.push(
+
+            attachment
+
+        );
+
+    }
+
+    populateFeedbackModal(
+
+        AppState.selectedFeedback
+
+    );
+
+}
+
+function removeNewAttachment(
+
+    filename
+
+) {
+
+    AppState.newAttachments =
+
+        AppState.newAttachments.filter(
+
+            file =>
+
+                file.name !==
+
+                filename
+
+        );
+
+    populateFeedbackModal(
+
+        AppState.selectedFeedback
 
     );
 
@@ -1680,19 +2054,12 @@ window.addEventListener(
 async function saveFeedback() {
 
     const accessToken =
-
         getAccessToken();
 
-    if (
-
-        !accessToken
-
-    ) {
+    if (!accessToken) {
 
         alert(
-
             "Please login."
-
         );
 
         return;
@@ -1700,19 +2067,12 @@ async function saveFeedback() {
     }
 
     const feedback =
-
         AppState.selectedFeedback;
 
-    if (
-
-        !feedback
-
-    ) {
+    if (!feedback) {
 
         alert(
-
             "No feedback selected."
-
         );
 
         return;
@@ -1720,43 +2080,58 @@ async function saveFeedback() {
     }
 
     const title =
-
         document.getElementById(
-
             "feedbackTitle"
-
-        ).value;
+        ).value.trim();
 
     const content =
-
         document.getElementById(
-
             "feedbackContent"
+        ).value.trim();
 
-        ).value;
+    const newAttachments =
+        AppState.newAttachments.map(
+
+            file => ({
+
+                filename:
+                    file.name,
+
+                contentType:
+                    file.type
+
+            })
+
+        );
+
+    const deletedAttachments =
+        AppState.deletedAttachments;
 
     try {
 
-        const response =
+        /*
+        =====================
+                INIT
+        =====================
+        */
+
+        const initResponse =
 
             await fetch(
 
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/init`,
 
                 {
 
                     method:
-
                         "PUT",
 
                     headers: {
 
                         Authorization:
-
                             `Bearer ${accessToken}`,
 
                         "Content-Type":
-
                             "application/json"
 
                     },
@@ -1767,7 +2142,11 @@ async function saveFeedback() {
 
                             title,
 
-                            content
+                            content,
+
+                            newAttachments,
+
+                            deletedAttachments
 
                         })
 
@@ -1775,50 +2154,317 @@ async function saveFeedback() {
 
             );
 
-        if (
-
-            !response.ok
-
-        ) {
+        if (!initResponse.ok) {
 
             throw new Error(
 
-                await response.text()
+                await initResponse.text()
 
             );
 
         }
 
-        const updated =
+        const initResult =
 
-            await response.json();
+            await initResponse.json();
 
-        AppState.selectedFeedback =
+        /*
+        =====================
+            UPLOAD FILES
+        =====================
+        */
 
-            updated;
+        await uploadFiles(
 
-        await loadMyFeedback();
+            initResult.uploads,
 
-        closeFeedbackModal();
-
-    }
-
-    catch (
-
-        error
-
-    ) {
-
-        console.error(
-
-            error
+            AppState.newAttachments
 
         );
 
+        /*
+        =====================
+                COMPLETE
+        =====================
+        */
+
+        const completeResponse =
+
+            await fetch(
+
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/complete`,
+
+                {
+
+                    method:
+                        "PUT",
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${accessToken}`,
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+
+                        JSON.stringify({
+
+                            title,
+
+                            content,
+
+                            newAttachments,
+
+                            deletedAttachments
+
+                        })
+
+                }
+
+            );
+
+        if (!completeResponse.ok) {
+
+            throw new Error(
+
+                await completeResponse.text()
+
+            );
+
+        }
+
+        AppState.newAttachments = [];
+
+        AppState.deletedAttachments = [];
+
+        closeFeedbackModal();
+
+        await loadMyFeedback();
+
+        AppState.selectedFeedback = null;
+
         alert(
+            "Feedback updated successfully."
+        );
 
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
             "Unable to update feedback."
+        );
 
+    }
+
+}
+
+async function uploadFiles(
+
+    uploads,
+
+    files
+
+) {
+
+    for (const upload of uploads) {
+
+        const file =
+
+            files.find(
+
+                f =>
+
+                    f.name ===
+
+                    upload.filename
+
+            );
+
+        if (!file) {
+
+            throw new Error(
+
+                `Missing file ${upload.filename}`
+
+            );
+
+        }
+
+        const response =
+
+            await fetch(
+
+                upload.uploadUrl,
+
+                {
+
+                    method:
+
+                        "PUT",
+
+                    headers: {
+
+                        "Content-Type":
+
+                            upload.contentType
+
+                    },
+
+                    body:
+
+                        file
+
+                }
+
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+
+                `Failed to upload ${upload.filename}`
+
+            );
+
+        }
+
+    }
+
+}
+
+function downloadTextFile(
+
+    filename,
+
+    content
+
+) {
+
+    const blob =
+
+        new Blob(
+
+            [
+
+                content
+
+            ],
+
+            {
+
+                type:
+
+                    "text/plain"
+
+            }
+
+        );
+
+    const url =
+
+        window.URL.createObjectURL(
+
+            blob
+
+        );
+
+    const link =
+
+        document.createElement(
+
+            "a"
+
+        );
+
+    link.href =
+
+        url;
+
+    link.download =
+
+        filename;
+
+    document.body.appendChild(
+
+        link
+
+    );
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(
+
+        url
+
+    );
+
+}
+
+async function downloadAttachments(
+    attachments
+) {
+
+    for (const attachment of attachments) {
+
+        const response = await fetch(
+            attachment.downloadUrl
+        );
+
+        if (!response.ok) {
+
+            console.error(
+                "Failed to download",
+                attachment.filename
+            );
+
+            continue;
+        }
+
+        const blob =
+            await response.blob();
+
+        const url =
+            window.URL.createObjectURL(
+                blob
+            );
+
+        const link =
+            document.createElement(
+                "a"
+            );
+
+        link.href = url;
+
+        link.download =
+            attachment.filename;
+
+        document.body.appendChild(
+            link
+        );
+
+        link.click();
+
+        link.remove();
+
+        window.URL.revokeObjectURL(
+            url
+        );
+
+        await new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    200
+                )
         );
 
     }
@@ -1831,76 +2477,86 @@ async function saveFeedback() {
 
 async function submitFeedback() {
 
-    const feedbackElement =
+    const titleElement =
+        document.getElementById(
+            "feedback-title"
+        );
 
+    const contentElement =
         document.getElementById(
             "feedback"
         );
 
-    const anonymousElement =
+    const fileInput =
+        document.getElementById(
+            "feedback-files"
+        );
 
+    const anonymousElement =
         document.getElementById(
             "anonymous"
         );
 
     const messageElement =
-
         document.getElementById(
             "message"
         );
 
-    if (!feedbackElement) {
+    const title =
+        titleElement.value.trim();
+
+    const content =
+        contentElement.value.trim();
+
+    if (!title || !content) {
+
+        messageElement.innerHTML =
+            "Please enter a title and feedback.";
 
         return;
 
     }
 
-    const feedback =
+    const files =
+        Array.from(
+            fileInput.files
+        );
 
-        feedbackElement.value.trim();
+    const attachments =
+        files.map(
 
-    if (!feedback) {
+            file => ({
 
-        if (messageElement) {
+                filename:
+                    file.name,
 
-            messageElement.innerHTML =
+                contentType:
+                    file.type
 
-                "Please enter feedback.";
+            })
 
-        }
-
-        return;
-
-    }
+        );
 
     const anonymous =
+        anonymousElement.checked;
 
-        anonymousElement
-
-        ?
-
-        anonymousElement.checked
-
-        :
-
-        false;
-
-    const endpoint =
-
+    const initEndpoint =
         anonymous
-
         ?
-
-        `${API_URL}/anonymous`
-
+        `${API_URL}/anonymous/init`
         :
+        `${API_URL}/init`;
 
-        API_URL;
+    const completeEndpoint =
+        anonymous
+        ?
+        `${API_URL}/anonymous/complete`
+        :
+        `${API_URL}/complete`;
 
     const headers = {
 
         "Content-Type":
-
             "application/json"
 
     };
@@ -1908,41 +2564,39 @@ async function submitFeedback() {
     if (!anonymous) {
 
         const accessToken =
-
             getAccessToken();
 
         if (!accessToken) {
 
-            if (messageElement) {
-
-                messageElement.innerHTML =
-
-                    "Please login or submit anonymously.";
-
-            }
+            messageElement.innerHTML =
+                "Please login or submit anonymously.";
 
             return;
 
         }
 
         headers.Authorization =
-
             `Bearer ${accessToken}`;
 
     }
 
     try {
 
-        const response =
+        /*
+        ============================
+                INIT
+        ============================
+        */
+
+        const initResponse =
 
             await fetch(
 
-                endpoint,
+                initEndpoint,
 
                 {
 
                     method:
-
                         "POST",
 
                     headers,
@@ -1951,7 +2605,7 @@ async function submitFeedback() {
 
                         JSON.stringify({
 
-                            feedback
+                            attachments
 
                         })
 
@@ -1959,21 +2613,116 @@ async function submitFeedback() {
 
             );
 
-        const result =
+        if (!initResponse.ok) {
 
-            await response.json();
+            throw new Error(
 
-        if (messageElement) {
+                await initResponse.text()
 
-            messageElement.innerHTML =
-
-                result.message;
+            );
 
         }
 
-        feedbackElement.value =
+        const initResult =
 
-            "";
+            await initResponse.json();
+
+        /*
+        ============================
+            UPLOAD TO S3
+        ============================
+        */
+
+        await uploadFiles(
+
+            initResult.uploads,
+
+            files
+
+        );
+
+        /*
+        ============================
+                COMPLETE
+        ============================
+        */
+
+        const completeBody = {
+
+            feedbackId:
+                initResult.feedbackId,
+
+            title,
+
+            content,
+
+            attachments
+
+        };
+
+        if (anonymous) {
+
+            completeBody.ownerId =
+                initResult.ownerId;
+
+        }
+
+        const completeResponse =
+
+            await fetch(
+
+                completeEndpoint,
+
+                {
+
+                    method:
+                        "POST",
+
+                    headers,
+
+                    body:
+
+                        JSON.stringify(
+
+                            completeBody
+
+                        )
+
+                }
+
+            );
+
+        if (!completeResponse.ok) {
+
+            throw new Error(
+
+                await completeResponse.text()
+
+            );
+
+        }
+
+        messageElement.innerHTML =
+
+            "Feedback submitted successfully.";
+
+        titleElement.value = "";
+
+        contentElement.value = "";
+
+        fileInput.value = "";
+
+        document.getElementById(
+
+            "selected-attachments"
+
+        ).innerHTML =
+
+            "No attachments selected";
+
+        AppState.newAttachments = [];
+
+        AppState.deletedAttachments = [];
 
     }
 
@@ -1981,13 +2730,9 @@ async function submitFeedback() {
 
         console.error(error);
 
-        if (messageElement) {
+        messageElement.innerHTML =
 
-            messageElement.innerHTML =
-
-                "Unable to connect to server.";
-
-        }
+            "Unable to submit feedback.";
 
     }
 

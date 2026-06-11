@@ -95,6 +95,36 @@ resource "aws_s3_bucket_policy" "storage" {
   })
 }
 
+resource "aws_s3_bucket_cors_configuration" "storage" {
+
+  bucket = aws_s3_bucket.storage.id
+
+  cors_rule {
+
+    allowed_headers = [
+      "*"
+    ]
+
+    allowed_methods = [
+      "GET",
+      "PUT",
+      "HEAD"
+    ]
+
+    allowed_origins = [
+      "*"
+    ]
+
+    expose_headers = [
+      "ETag"
+    ]
+
+    max_age_seconds = 3000
+
+  }
+
+}
+
 resource "aws_cloudfront_origin_access_control" "this" {
   name                              = "website-oac"
   description                       = "OAC for private S3 bucket"
@@ -327,11 +357,11 @@ resource "aws_apigatewayv2_route" "download_feedback_route" {
   authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
-resource "aws_apigatewayv2_route" "post_feedback_route" {
+resource "aws_apigatewayv2_route" "post_feedback_initialise_route" {
 
   api_id = aws_apigatewayv2_api.feedback_api.id
 
-  route_key = "POST /feedback"
+  route_key = "POST /feedback/init"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 
@@ -340,20 +370,55 @@ resource "aws_apigatewayv2_route" "post_feedback_route" {
   authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
-resource "aws_apigatewayv2_route" "post_feedback_anonymous_route" {
+resource "aws_apigatewayv2_route" "post_feedback_complete_route" {
 
   api_id = aws_apigatewayv2_api.feedback_api.id
 
-  route_key = "POST /feedback/anonymous"
+  route_key = "POST /feedback/complete"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "anonymous_post_feedback_initialise_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "POST /feedback/anonymous/init"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
-resource "aws_apigatewayv2_route" "edit_feedback_route" {
+resource "aws_apigatewayv2_route" "anonymous_post_feedback_complete_route" {
 
   api_id = aws_apigatewayv2_api.feedback_api.id
 
-  route_key = "PUT /feedback/{ownerId}/{feedbackId}"
+  route_key = "POST /feedback/anonymous/complete"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "edit_feedback_initialise_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "PUT /feedback/{ownerId}/{feedbackId}/init"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "edit_feedback_complete_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "PUT /feedback/{ownerId}/{feedbackId}/complete"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 

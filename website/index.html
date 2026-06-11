@@ -247,7 +247,25 @@
 
         <label>
 
-            Feedback
+            Title
+
+        </label>
+
+        <input
+
+            id="feedback-title"
+
+            type="text"
+
+            placeholder="Enter feedback title">
+
+    </div>
+
+    <div class="form-group">
+
+        <label>
+
+            Content
 
         </label>
 
@@ -258,6 +276,34 @@
             rows="10"
 
             placeholder="Enter your feedback"></textarea>
+
+    </div>
+
+    <div class="form-group">
+
+        <label>
+
+            Attachments
+
+        </label>
+
+        <input
+
+            id="feedback-files"
+
+            type="file"
+
+            multiple>
+
+    </div>
+
+    <div
+
+        id="selected-attachments"
+
+        class="attachments-preview">
+
+        No attachments selected
 
     </div>
 
@@ -278,6 +324,7 @@
     </div>
 
     <button
+
         onclick="submitFeedback()">
 
         Submit Feedback
@@ -285,7 +332,9 @@
     </button>
 
     <div
+
         id="message"
+
         class="message">
 
     </div>
@@ -293,8 +342,6 @@
 </section>
 
 </template>
-
-
 
 <!-- =====================================================
                 MY FEEDBACK TEMPLATE
@@ -471,56 +518,74 @@
         </label>
 
         <div
-            id="feedbackAttachments"
-            class="attachments-container">
 
-            No attachments
+            id="feedbackAttachments"
+
+            class="attachments-container">
 
         </div>
 
-    <div class="modal-footer">
+        <div
 
-        <button
-            id="closeBtn"
-            onclick="closeFeedbackModal()">
+            id="modalUploadSection"
 
-            Close
+            class="modal-upload"
 
-        </button>
+            style="display:none;">
 
-        <button
-            id="editBtn"
-            onclick="switchToEditMode()">
+            <input
 
-            Edit
+                id="modalAttachmentInput"
 
-        </button>
+                type="file"
 
-        <button
-            id="deleteBtn"
-            onclick="deleteSelectedFeedback()">
+                multiple>
 
-            Delete
+        </div>
 
-        </button>
+        <div class="modal-footer">
 
-        <button
-            id="downloadBtn"
-            onclick="downloadSelectedFeedback()">
+            <button
+                id="closeBtn"
+                onclick="closeFeedbackModal()">
 
-            Download
+                Close
 
-        </button>
+            </button>
 
-        <button
-            id="saveBtn"
-            onclick="saveFeedback()">
+            <button
+                id="editBtn"
+                onclick="switchToEditMode()">
 
-            Save
+                Edit
 
-        </button>
+            </button>
 
-    </div>
+            <button
+                id="deleteBtn"
+                onclick="deleteSelectedFeedback()">
+
+                Delete
+
+            </button>
+
+            <button
+                id="downloadBtn"
+                onclick="downloadSelectedFeedback()">
+
+                Download
+
+            </button>
+
+            <button
+                id="saveBtn"
+                onclick="saveFeedback()">
+
+                Save
+
+            </button>
+
+        </div>
 
     </div>
 

@@ -5,11 +5,19 @@ import uuid
 import os
 from datetime import datetime, timezone
 from helpers.auth import get_owner_information
+from helpers.uploads import (
+    verify_feedback_uploads,
+    delete_feedback_uploads,
+    delete_selected_uploads,
+)
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
+BUCKET_NAME = os.environ["STORAGE_BUCKET"]
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
+
+s3 = boto3.client("s3")
 
 AUTHENTICATED = "AUTHENTICATED"
 ANONYMOUS = "ANONYMOUS"
@@ -29,11 +37,17 @@ def lambda_handler(event, context):
     if parts[0] == event["requestContext"]["stage"]:
         parts = parts[1:]
 
-    if method == "POST" and path.endswith("/anonymous"):
-        return create_anonymous_feedback(event)
+    if method == "POST" and path.endswith("/feedback/init"):
+        return initiate_feedback(event)
 
-    if method == "POST" and path.endswith("/feedback"):
-        return create_authenticated_feedback(event)
+    if method == "POST" and path.endswith("/feedback/complete"):
+        return complete_feedback(event)
+
+    if method == "POST" and path.endswith("/feedback/anonymous/init"):
+        return initiate_anonymous_feedback(event)
+
+    if method == "POST" and path.endswith("/feedback/anonymous/complete"):
+        return complete_anonymous_feedback(event)
 
     if method == "GET" and path.endswith("/feedback/admin"):
         return get_admin_feedback(event)
@@ -52,8 +66,21 @@ def lambda_handler(event, context):
     if method == "GET" and len(parts) == 3 and parts[0] == "feedback":
         return get_single_feedback(event, parts)
 
-    if method == "PUT" and len(parts) == 3 and parts[0] == "feedback":
-        return edit_feedback(event, parts)
+    if (
+        method == "PUT"
+        and len(parts) == 4
+        and parts[0] == "feedback"
+        and parts[3] == "init"
+    ):
+        return initiate_edit_feedback(event, parts)
+
+    if (
+        method == "PUT"
+        and len(parts) == 4
+        and parts[0] == "feedback"
+        and parts[3] == "complete"
+    ):
+        return complete_edit_feedback(event, parts)
 
     if method == "DELETE" and len(parts) == 3 and parts[0] == "feedback":
         return delete_feedback(event, parts)
@@ -61,41 +88,147 @@ def lambda_handler(event, context):
     return {"statusCode": 405, "body": json.dumps({"message": "Method not allowed"})}
 
 
-def create_anonymous_feedback(event):
+def generate_upload_response(
+    owner_id, attachments, feedback_id=None, include_owner=False
+):
+
+    if not feedback_id:
+        feedback_id = str(uuid.uuid4())
+
+    uploads = []
+
+    for attachment in attachments:
+
+        filename = attachment["filename"]
+        content_type = attachment["contentType"]
+        key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
+
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": BUCKET_NAME,
+                "Key": key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=900,
+        )
+
+        uploads.append(
+            {
+                "filename": filename,
+                "uploadUrl": upload_url,
+                "contentType": content_type,
+            }
+        )
+
+    response_body = {
+        "feedbackId": feedback_id,
+        "uploads": uploads,
+    }
+
+    if include_owner:
+        response_body["ownerId"] = owner_id
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(response_body),
+    }
+
+
+def initiate_feedback(event):
 
     body = event["body"]
 
     if isinstance(body, str):
         body = json.loads(body)
 
-    content = body.get("feedback")
+    owner_info = get_owner_information(event)
 
-    if not content:
+    if not owner_info.get("ownerId"):
+
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
+
+    return generate_upload_response(
+        owner_info["ownerId"],
+        body["attachments"],
+    )
+
+
+def complete_feedback(event):
+
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    owner_info = get_owner_information(event)
+
+    if not owner_info.get("ownerId"):
+
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
+
+    owner_id = owner_info["ownerId"]
+
+    feedback_id = body.get("feedbackId")
+
+    title = body.get("title")
+
+    content = body.get("content")
+
+    attachments = body.get("attachments", [])
+
+    if not feedback_id or not title or not content:
+
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": "Feedback is required"}),
+            "body": json.dumps({"message": "Invalid Request"}),
         }
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    feedback_id = str(uuid.uuid4())
-
-    item = {
-        "ownerId": str(uuid.uuid4()),
-        "ownerType": ANONYMOUS,
-        "feedbackId": feedback_id,
-        "title": "Untitled",
-        "content": content,
-        "attachments": [],
-        "status": "ACTIVE",
-        "createdAt": timestamp,
-        "lastUpdated": timestamp,
-        "entityType": ENTITY_TYPE,
-    }
-
     try:
 
-        table.put_item(Item=item)
+        verified = verify_feedback_uploads(
+            owner_id,
+            feedback_id,
+            attachments,
+        )
+
+        if not verified:
+
+            delete_feedback_uploads(
+                owner_id,
+                feedback_id,
+            )
+
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Attachment verification failed"}),
+            }
+
+        item = {
+            "ownerId": owner_id,
+            "ownerType": owner_info["ownerType"],
+            "feedbackId": feedback_id,
+            "title": title,
+            "content": content,
+            "attachments": attachments,
+            "status": "ACTIVE",
+            "createdAt": timestamp,
+            "lastUpdated": timestamp,
+            "entityType": ENTITY_TYPE,
+        }
+
+        table.put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(ownerId) AND attribute_not_exists(feedbackId)",
+        )
 
         return {
             "statusCode": 201,
@@ -110,6 +243,11 @@ def create_anonymous_feedback(event):
     except Exception as e:
 
         print(str(e))
+
+        delete_feedback_uploads(
+            owner_id,
+            feedback_id,
+        )
 
         return {
             "statusCode": 500,
@@ -117,43 +255,85 @@ def create_anonymous_feedback(event):
         }
 
 
-def create_authenticated_feedback(event):
+def initiate_anonymous_feedback(event):
 
     body = event["body"]
 
     if isinstance(body, str):
         body = json.loads(body)
 
-    content = body.get("feedback")
+    anonymous_owner = str(uuid.uuid4())
 
-    if not content:
+    return generate_upload_response(
+        anonymous_owner,
+        body["attachments"],
+        include_owner=True,
+    )
+
+
+def complete_anonymous_feedback(event):
+
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    owner_id = body.get("ownerId")
+
+    feedback_id = body.get("feedbackId")
+
+    title = body.get("title")
+
+    content = body.get("content")
+
+    attachments = body.get("attachments", [])
+
+    if not owner_id or not feedback_id or not title or not content:
+
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": "Feedback is required"}),
+            "body": json.dumps({"message": "Invalid Request"}),
         }
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    feedback_id = str(uuid.uuid4())
-
-    owner_info = get_owner_information(event)
-
-    item = {
-        "ownerId": owner_info["ownerId"],
-        "ownerType": owner_info["ownerType"],
-        "feedbackId": feedback_id,
-        "title": "Untitled",
-        "content": content,
-        "attachments": [],
-        "status": "ACTIVE",
-        "createdAt": timestamp,
-        "lastUpdated": timestamp,
-        "entityType": ENTITY_TYPE,
-    }
-
     try:
 
-        table.put_item(Item=item)
+        verified = verify_feedback_uploads(
+            owner_id,
+            feedback_id,
+            attachments,
+        )
+
+        if not verified:
+
+            delete_feedback_uploads(
+                owner_id,
+                feedback_id,
+            )
+
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Attachment verification failed"}),
+            }
+
+        item = {
+            "ownerId": owner_id,
+            "ownerType": ANONYMOUS,
+            "feedbackId": feedback_id,
+            "title": title,
+            "content": content,
+            "attachments": attachments,
+            "status": "ACTIVE",
+            "createdAt": timestamp,
+            "lastUpdated": timestamp,
+            "entityType": ENTITY_TYPE,
+        }
+
+        table.put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(ownerId) AND attribute_not_exists(feedbackId)",
+        )
 
         return {
             "statusCode": 201,
@@ -168,6 +348,11 @@ def create_authenticated_feedback(event):
     except Exception as e:
 
         print(str(e))
+
+        delete_feedback_uploads(
+            owner_id,
+            feedback_id,
+        )
 
         return {
             "statusCode": 500,
@@ -285,9 +470,16 @@ def get_single_feedback(event, parts):
         }
 
 
-def edit_feedback(event, parts):
+def initiate_edit_feedback(event, parts):
 
-    owner_id, feedback_id = parts[1], parts[2]
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    owner_id = parts[1]
+
+    feedback_id = parts[2]
 
     owner_info = get_owner_information(event)
 
@@ -305,49 +497,168 @@ def edit_feedback(event, parts):
             "body": json.dumps({"message": "Access denied"}),
         }
 
+    attachments = body.get(
+        "newAttachments",
+        [],
+    )
+
+    response = table.get_item(
+        Key={
+            "ownerId": owner_id,
+            "feedbackId": feedback_id,
+        }
+    )
+
+    item = response.get("Item")
+
+    if not item:
+
+        return {
+            "statusCode": 404,
+            "body": json.dumps({"message": "Feedback not found"}),
+        }
+
+    return generate_upload_response(
+        owner_id=owner_id,
+        feedback_id=feedback_id,
+        attachments=attachments,
+        include_owner=False,
+    )
+
+
+def complete_edit_feedback(event, parts):
+
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    owner_id = parts[1]
+
+    feedback_id = parts[2]
+
+    owner_info = get_owner_information(event)
+
+    if not owner_info.get("ownerId"):
+
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
+
+    if owner_info["ownerId"] != owner_id and not owner_info["isAdmin"]:
+
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
+
+    title = body.get("title")
+
+    content = body.get("content")
+
+    new_attachments = body.get(
+        "newAttachments",
+        [],
+    )
+
+    deleted_attachments = body.get(
+        "deletedAttachments",
+        [],
+    )
+
     try:
 
-        body = event["body"]
+        response = table.get_item(
+            Key={
+                "ownerId": owner_id,
+                "feedbackId": feedback_id,
+            }
+        )
 
-        if isinstance(body, str):
-            body = json.loads(body)
+        item = response.get("Item")
 
-        title = body.get("title")
+        if not item:
 
-        content = body.get("content")
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"message": "Feedback not found"}),
+            }
 
-        if title is None or content is None:
+        verified = verify_feedback_uploads(
+            owner_id,
+            feedback_id,
+            new_attachments,
+        )
+
+        if not verified:
+
+            delete_selected_uploads(
+                owner_id,
+                feedback_id,
+                new_attachments,
+            )
 
             return {
                 "statusCode": 400,
-                "body": json.dumps({"message": "Title and content are required"}),
+                "body": json.dumps({"message": "Attachment verification failed"}),
             }
 
-        timestamp = datetime.now(timezone.utc).isoformat()
+        existing_attachments = item.get(
+            "attachments",
+            [],
+        )
 
-        response = table.update_item(
+        deleted_names = {attachment["filename"] for attachment in deleted_attachments}
+
+        final_attachments = [
+            attachment
+            for attachment in existing_attachments
+            if attachment["filename"] not in deleted_names
+        ]
+
+        final_attachments.extend(new_attachments)
+
+        table.update_item(
             Key={
                 "ownerId": owner_id,
                 "feedbackId": feedback_id,
             },
-            UpdateExpression="SET title=:t, content=:c, lastUpdated=:u",
+            UpdateExpression="""
+                SET
+                    title = :title,
+                    content = :content,
+                    attachments = :attachments,
+                    lastUpdated = :lastUpdated
+            """,
             ExpressionAttributeValues={
-                ":t": title,
-                ":c": content,
-                ":u": timestamp,
+                ":title": title,
+                ":content": content,
+                ":attachments": final_attachments,
+                ":lastUpdated": datetime.now(timezone.utc).isoformat(),
             },
-            ConditionExpression="attribute_exists(ownerId) AND attribute_exists(feedbackId)",
-            ReturnValues="ALL_NEW",
+        )
+
+        delete_selected_uploads(
+            owner_id,
+            feedback_id,
+            deleted_attachments,
         )
 
         return {
             "statusCode": 200,
-            "body": json.dumps(response["Attributes"]),
+            "body": json.dumps({"message": "Feedback updated successfully"}),
         }
 
     except Exception as e:
 
         print(str(e))
+
+        delete_selected_uploads(
+            owner_id,
+            feedback_id,
+            new_attachments,
+        )
 
         return {
             "statusCode": 500,
@@ -357,7 +668,9 @@ def edit_feedback(event, parts):
 
 def delete_feedback(event, parts):
 
-    owner_id, feedback_id = parts[1], parts[2]
+    owner_id = parts[1]
+
+    feedback_id = parts[2]
 
     owner_info = get_owner_information(event)
 
@@ -377,12 +690,38 @@ def delete_feedback(event, parts):
 
     try:
 
-        table.delete_item(
-            Key={"ownerId": owner_id, "feedbackId": feedback_id},
-            ConditionExpression="attribute_exists(ownerId) AND attribute_exists(feedbackId)",
+        response = table.get_item(
+            Key={
+                "ownerId": owner_id,
+                "feedbackId": feedback_id,
+            }
         )
 
-        return {"statusCode": 200, "body": json.dumps({"message": "Feedback deleted"})}
+        item = response.get("Item")
+
+        if not item:
+
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"message": "Feedback not found"}),
+            }
+
+        delete_feedback_uploads(
+            owner_id,
+            feedback_id,
+        )
+
+        table.delete_item(
+            Key={
+                "ownerId": owner_id,
+                "feedbackId": feedback_id,
+            }
+        )
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Feedback deleted successfully"}),
+        }
 
     except Exception as e:
 
@@ -397,6 +736,7 @@ def delete_feedback(event, parts):
 def download_feedback(event, parts):
 
     owner_id = parts[1]
+
     feedback_id = parts[2]
 
     owner_info = get_owner_information(event)
@@ -417,7 +757,12 @@ def download_feedback(event, parts):
 
     try:
 
-        response = table.get_item(Key={"ownerId": owner_id, "feedbackId": feedback_id})
+        response = table.get_item(
+            Key={
+                "ownerId": owner_id,
+                "feedbackId": feedback_id,
+            }
+        )
 
         item = response.get("Item")
 
@@ -427,6 +772,40 @@ def download_feedback(event, parts):
                 "statusCode": 404,
                 "body": json.dumps({"message": "Feedback not found"}),
             }
+
+        attachments = item.get("attachments", [])
+
+        download_attachments = []
+
+        for attachment in attachments:
+
+            filename = attachment.get("filename")
+
+            content_type = attachment.get("contentType")
+
+            key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
+
+            download_url = s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": BUCKET_NAME,
+                    "Key": key,
+                    "ResponseContentDisposition": f'attachment; filename="{filename}"',
+                },
+                ExpiresIn=900,
+            )
+
+            download_attachments.append(
+                {
+                    "filename": filename,
+                    "contentType": content_type,
+                    "downloadUrl": download_url,
+                }
+            )
+
+        attachment_list = "\n".join(
+            attachment.get("filename") for attachment in attachments
+        )
 
         text = f"""
 Feedback ID
@@ -439,32 +818,38 @@ Owner ID
 
 Status
 ------
-{item.get("status", "")}
+{item.get("status")}
 
 Title
 -----
-{item.get("title", "")}
+{item.get("title")}
 
 Content
 -------
-{item.get("content", "")}
+{item.get("content")}
 
 Created At
 ----------
-{item.get("createdAt", "")}
+{item.get("createdAt")}
 
 Last Updated
 ------------
-{item.get("lastUpdated", "")}
+{item.get("lastUpdated")}
+
+Attachments
+-----------
+{attachment_list}
 """
 
         return {
             "statusCode": 200,
-            "headers": {
-                "Content-Type": "text/plain",
-                "Content-Disposition": f'attachment; filename="{feedback_id}.txt"',
-            },
-            "body": text,
+            "body": json.dumps(
+                {
+                    "filename": f"feedback-{feedback_id}.txt",
+                    "content": text,
+                    "attachments": download_attachments,
+                }
+            ),
         }
 
     except Exception as e:
