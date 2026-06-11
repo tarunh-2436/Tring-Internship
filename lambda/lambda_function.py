@@ -47,21 +47,24 @@ def lambda_handler(event, context):
 
     method = event["requestContext"]["http"]["method"]
 
-    path = event["rawPath"]
+    path = event["requestContext"]["http"]["path"]
 
     if method == "POST" and path.endswith("/anonymous"):
-        return create_feedback(event, anonymous=True)
+        return create_anonymous_feedback(event)
 
-    if method == "POST":
-        return create_feedback(event, anonymous=False)
+    if method == "POST" and path.endswith("/feedback"):
+        return create_authenticated_feedback(event)
 
     if method == "GET" and path.endswith("/feedback"):
-        return get_feedback(event)
+        return get_user_feedback(event)
+
+    if method == "GET" and path.endswith("/feedback/admin"):
+        return get_admin_feedback(event)
 
     return {"statusCode": 405, "body": json.dumps({"message": "Method not allowed"})}
 
 
-def create_feedback(event, anonymous=False):
+def create_anonymous_feedback(event):
 
     body = event["body"]
 
@@ -80,15 +83,63 @@ def create_feedback(event, anonymous=False):
 
     feedback_id = str(uuid.uuid4())
 
-    if anonymous:
-        owner_info = {
-            "ownerId": str(uuid.uuid4()),
-            "ownerType": ANONYMOUS,
-            "isAdmin": False,
+    item = {
+        "ownerId": str(uuid.uuid4()),
+        "ownerType": ANONYMOUS,
+        "feedbackId": feedback_id,
+        "title": "Untitled",
+        "content": content,
+        "attachments": [],
+        "status": "ACTIVE",
+        "createdAt": timestamp,
+        "lastUpdated": timestamp,
+        "entityType": ENTITY_TYPE,
+    }
+
+    try:
+
+        table.put_item(Item=item)
+
+        return {
+            "statusCode": 201,
+            "body": json.dumps(
+                {
+                    "message": "Feedback stored successfully",
+                    "feedbackId": feedback_id,
+                }
+            ),
         }
 
-    else:
-        owner_info = get_owner_information(event)
+    except Exception as e:
+
+        print(str(e))
+
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Error storing feedback"}),
+        }
+
+
+def create_authenticated_feedback(event):
+
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    content = body.get("feedback")
+
+    if not content:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"message": "Feedback is required"}),
+        }
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    feedback_id = str(uuid.uuid4())
+
+    owner_info = get_owner_information(event)
 
     item = {
         "ownerId": owner_info["ownerId"],
@@ -127,16 +178,16 @@ def create_feedback(event, anonymous=False):
         }
 
 
-def get_feedback(event):
+def get_admin_feedback(event):
 
     owner_info = get_owner_information(event)
 
-    if owner_info["isAdmin"]:
-        return get_admin_feedback(owner_info)
-    return get_user_feedback(owner_info)
+    if not owner_info["isAdmin"]:
 
-
-def get_admin_feedback(owner_info):
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
 
     try:
 
@@ -158,7 +209,16 @@ def get_admin_feedback(owner_info):
         }
 
 
-def get_user_feedback(owner_info):
+def get_user_feedback(event):
+
+    owner_info = get_owner_information(event)
+
+    if not owner_info["ownerId"]:
+
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"message": "Access denied"}),
+        }
 
     try:
 

@@ -10,7 +10,9 @@
         content="width=device-width, initial-scale=1.0">
 
     <title>
+
         Feedback Management Portal
+
     </title>
 
     <link
@@ -24,7 +26,7 @@
 <div class="app">
 
     <!-- ===========================
-            HEADER
+                HEADER
     ============================ -->
 
     <header class="topbar">
@@ -49,22 +51,19 @@
 
             </div>
 
-            <button
-                onclick="login()">
+            <button onclick="login()">
 
                 Login
 
             </button>
 
-            <button
-                onclick="signup()">
+            <button onclick="signup()">
 
                 Sign Up
 
             </button>
 
-            <button
-                onclick="logout()">
+            <button onclick="logout()">
 
                 Logout
 
@@ -76,34 +75,30 @@
 
 
     <!-- ===========================
-            BODY
+                BODY
     ============================ -->
 
     <div class="body-container">
 
-
         <!-- =======================
-                SIDEBAR
+                    SIDEBAR
         ======================== -->
 
         <aside class="sidebar">
 
-            <button
-                id="nav-dashboard">
+            <button id="nav-home">
 
                 🏠 Home
 
             </button>
 
-            <button
-                id="nav-submit">
+            <button id="nav-submit">
 
                 📝 Submit Feedback
 
             </button>
 
-            <button
-                id="nav-my-feedback">
+            <button id="nav-my-feedback">
 
                 📂 My Feedback
 
@@ -120,9 +115,8 @@
         </aside>
 
 
-
         <!-- =======================
-                MAIN CONTENT
+                CONTENT
         ======================== -->
 
         <main
@@ -136,308 +130,277 @@
 
 
 
-<!-- ===========================
-        TEMPLATES
-=========================== -->
-
+<!-- =====================================================
+                        HOME TEMPLATE
+====================================================== -->
 
 <template id="home-template">
 
-    <section class="page">
+<section class="page">
 
-        <h2>
+    <h2>
 
-            Home
+        Home
 
-        </h2>
+    </h2>
 
-        <p>
+    <p>
 
-            Welcome to the Feedback Management Portal.
+        Welcome to the Feedback Management Portal.
 
-        </p>
+    </p>
 
-        <div class="dashboard-grid">
+    <div class="dashboard-grid">
 
-            <div class="dashboard-card">
+        <div class="dashboard-card">
 
-                <h3>
+            <h3>
 
-                    Submit Feedback
+                Submit Feedback
 
-                </h3>
+            </h3>
 
-                <p>
+            <p>
 
-                    Create a new feedback submission.
+                Create a new feedback submission.
 
-                </p>
+            </p>
 
-                <button
-                    onclick="showSubmit()">
+            <button
+                onclick="navigate('submit')">
 
-                    Open
+                Open
 
-                </button>
-
-            </div>
-
-            <div class="dashboard-card">
-
-                <h3>
-
-                    My Feedback
-
-                </h3>
-
-                <p>
-
-                    View your submitted feedback.
-
-                </p>
-
-                <button
-                    onclick="showMyFeedback()">
-
-                    Open
-
-                </button>
-
-            </div>
-
-            <div class="dashboard-card">
-
-                <h3>
-
-                    Admin Dashboard
-
-                </h3>
-
-                <p>
-
-                    Available only to administrators.
-
-                </p>
-
-                <button
-                    onclick="showAdminDashboard()">
-
-                    Open
-
-                </button>
-
-            </div>
+            </button>
 
         </div>
 
-    </section>
+        <div class="dashboard-card">
 
-</template>
-
-
-
-
-<template id="submit-template">
-
-    <section class="page">
-
-        <h2>
-
-            Submit Feedback
-
-        </h2>
-
-        <div class="form-group">
-
-            <label>
-
-                Title
-
-            </label>
-
-            <input
-                id="feedback-title"
-                type="text"
-                placeholder="Enter title">
-
-        </div>
-
-        <div class="form-group">
-
-            <label>
-
-                Feedback
-
-            </label>
-
-            <textarea
-
-                id="feedback"
-
-                rows="10"
-
-                placeholder="Enter your feedback">
-
-            </textarea>
-
-        </div>
-
-        <div class="form-group">
-
-            <label>
-
-                Attachments
-
-            </label>
-
-            <input
-
-                id="attachments"
-
-                type="file"
-
-                multiple>
-
-        </div>
-
-        <div class="form-group">
-
-            <label>
-
-                <input
-
-                    id="anonymous"
-
-                    type="checkbox">
-
-                Submit anonymously
-
-            </label>
-
-        </div>
-
-        <button
-
-            onclick="submitFeedback()">
-
-            Submit Feedback
-
-        </button>
-
-        <div
-
-            id="message"
-
-            class="message">
-
-        </div>
-
-    </section>
-
-</template>
-
-
-
-
-<template id="my-feedback-template">
-
-    <section class="page">
-
-        <div class="page-header">
-
-            <h2>
+            <h3>
 
                 My Feedback
 
-            </h2>
+            </h3>
+
+            <p>
+
+                View your submitted feedback.
+
+            </p>
 
             <button
+                onclick="navigate('my-feedback')">
 
-                onclick="fetchFeedback()">
-
-                Refresh
+                Open
 
             </button>
 
         </div>
 
-        <div
+        <div class="dashboard-card">
 
-            id="feedback-preview"
-
-            class="feedback-list">
-
-        </div>
-
-    </section>
-
-</template>
-
-
-
-
-<template id="admin-template">
-
-    <section class="page">
-
-        <div class="page-header">
-
-            <h2>
+            <h3>
 
                 Admin Dashboard
 
-            </h2>
+            </h3>
+
+            <p>
+
+                Administrator tools and downloads.
+
+            </p>
 
             <button
+                onclick="navigate('admin')">
 
-                onclick="fetchFeedback()">
-
-                Refresh
+                Open
 
             </button>
 
         </div>
 
-        <div class="admin-toolbar">
+    </div>
 
-            <input
-
-                id="search"
-
-                type="text"
-
-                placeholder="Search">
-
-            <select>
-
-                <option>
-
-                    Latest
-
-                </option>
-
-                <option>
-
-                    Oldest
-
-                </option>
-
-            </select>
-
-        </div>
-
-        <div
-
-            id="feedback-preview"
-
-            class="feedback-list">
-
-        </div>
-
-    </section>
+</section>
 
 </template>
 
+
+
+<!-- =====================================================
+                    SUBMIT TEMPLATE
+====================================================== -->
+
+<template id="submit-template">
+
+<section class="page">
+
+    <h2>
+
+        Submit Feedback
+
+    </h2>
+
+    <div class="form-group">
+
+        <label>
+
+            Feedback
+
+        </label>
+
+        <textarea
+
+            id="feedback"
+
+            rows="10"
+
+            placeholder="Enter your feedback">
+
+        </textarea>
+
+    </div>
+
+    <div class="form-group">
+
+        <label>
+
+            <input
+
+                id="anonymous"
+
+                type="checkbox">
+
+            Submit anonymously
+
+        </label>
+
+    </div>
+
+    <button
+        onclick="submitFeedback()">
+
+        Submit Feedback
+
+    </button>
+
+    <div
+        id="message"
+        class="message">
+
+    </div>
+
+</section>
+
+</template>
+
+
+
+<!-- =====================================================
+                MY FEEDBACK TEMPLATE
+====================================================== -->
+
+<template id="my-feedback-template">
+
+<section class="page">
+
+    <div class="page-header">
+
+        <h2>
+
+            My Feedback
+
+        </h2>
+
+        <button
+            onclick="loadMyFeedback()">
+
+            Refresh
+
+        </button>
+
+    </div>
+
+    <div
+
+        id="feedback-preview"
+
+        class="feedback-list">
+
+    </div>
+
+</section>
+
+</template>
+
+
+
+<!-- =====================================================
+                ADMIN TEMPLATE
+====================================================== -->
+
+<template id="admin-template">
+
+<section class="page">
+
+    <div class="page-header">
+
+        <h2>
+
+            Admin Dashboard
+
+        </h2>
+
+        <button
+            onclick="loadAdminFeedback()">
+
+            Refresh
+
+        </button>
+
+    </div>
+
+    <div class="admin-toolbar">
+
+        <input
+
+            id="search"
+
+            type="text"
+
+            placeholder="Search feedback">
+
+        <select id="sort-order">
+
+            <option value="latest">
+
+                Latest
+
+            </option>
+
+            <option value="oldest">
+
+                Oldest
+
+            </option>
+
+        </select>
+
+    </div>
+
+    <div
+
+        id="feedback-preview"
+
+        class="feedback-list">
+
+    </div>
+
+</section>
+
+</template>
 
 
 

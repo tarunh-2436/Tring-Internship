@@ -1,6 +1,6 @@
-/* ===========================
-   RESET
-=========================== */
+/* ==========================================================
+                        RESET
+========================================================== */
 
 *{
     margin:0;
@@ -10,27 +10,35 @@
 
 html,
 body{
+
     width:100%;
     height:100%;
+
     font-family:Arial,Helvetica,sans-serif;
+
     background:#f4f6fb;
+
     color:#1f2937;
 }
 
-/* ===========================
-   APP
-=========================== */
+/* ==========================================================
+                        APP
+========================================================== */
 
 .app{
+
     width:100%;
+
     height:100vh;
+
     display:flex;
+
     flex-direction:column;
 }
 
-/* ===========================
-   TOPBAR
-=========================== */
+/* ==========================================================
+                        TOPBAR
+========================================================== */
 
 .topbar{
 
@@ -75,18 +83,18 @@ body{
 
     background:#1f2937;
 
-    padding:10px 14px;
+    padding:10px 15px;
 
     border-radius:8px;
 
-    font-size:14px;
+    border:1px solid rgba(255,255,255,.1);
 
-    border:1px solid rgba(255,255,255,.15);
+    font-size:14px;
 }
 
-/* ===========================
-   BUTTONS
-=========================== */
+/* ==========================================================
+                        BUTTONS
+========================================================== */
 
 button{
 
@@ -96,11 +104,11 @@ button{
 
     border-radius:8px;
 
-    padding:10px 18px;
-
     background:#2563eb;
 
     color:white;
+
+    padding:10px 18px;
 
     font-size:14px;
 
@@ -116,9 +124,9 @@ button:hover{
     transform:translateY(-2px);
 }
 
-/* ===========================
-   BODY
-=========================== */
+/* ==========================================================
+                        BODY
+========================================================== */
 
 .body-container{
 
@@ -129,9 +137,9 @@ button:hover{
     overflow:hidden;
 }
 
-/* ===========================
-   SIDEBAR
-=========================== */
+/* ==========================================================
+                        SIDEBAR
+========================================================== */
 
 .sidebar{
 
@@ -139,15 +147,15 @@ button:hover{
 
     background:#1f2937;
 
-    padding:20px;
-
     display:flex;
 
     flex-direction:column;
 
     gap:12px;
 
-    box-shadow:3px 0 10px rgba(0,0,0,.08);
+    padding:20px;
+
+    box-shadow:2px 0 8px rgba(0,0,0,.1);
 }
 
 .sidebar button{
@@ -160,8 +168,6 @@ button:hover{
 
     padding:14px;
 
-    border-radius:8px;
-
     font-size:15px;
 }
 
@@ -170,9 +176,9 @@ button:hover{
     background:#2563eb;
 }
 
-/* ===========================
-   CONTENT
-=========================== */
+/* ==========================================================
+                        CONTENT
+========================================================== */
 
 #content{
 
@@ -183,9 +189,9 @@ button:hover{
     padding:35px;
 }
 
-/* ===========================
-   PAGE
-=========================== */
+/* ==========================================================
+                        PAGE
+========================================================== */
 
 .page{
 
@@ -200,11 +206,9 @@ button:hover{
 
 .page h2{
 
-    margin-bottom:15px;
-
     font-size:28px;
 
-    color:#111827;
+    margin-bottom:15px;
 }
 
 .page p{
@@ -212,9 +216,9 @@ button:hover{
     line-height:1.6;
 }
 
-/* ===========================
-   PAGE HEADER
-=========================== */
+/* ==========================================================
+                        PAGE HEADER
+========================================================== */
 
 .page-header{
 
@@ -227,20 +231,24 @@ button:hover{
     margin-bottom:25px;
 }
 
-/* ===========================
-   DASHBOARD GRID
-=========================== */
+/* ==========================================================
+                    DASHBOARD GRID
+========================================================== */
 
 .dashboard-grid{
 
     display:grid;
 
-    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
 
     gap:20px;
 
-    margin-top:25px;
+    margin-top:30px;
 }
+
+/* ==========================================================
+                    DASHBOARD CARD
+========================================================== */
 
 .dashboard-card{
 
@@ -250,7 +258,7 @@ button:hover{
 
     border-radius:10px;
 
-    padding:20px;
+    padding:22px;
 
     box-shadow:0 2px 8px rgba(0,0,0,.08);
 
@@ -267,20 +275,18 @@ button:hover{
 .dashboard-card h3{
 
     margin-bottom:12px;
-
-    color:#111827;
 }
 
 .dashboard-card p{
 
-    margin-bottom:20px;
+    margin-bottom:18px;
 
     color:#4b5563;
 }
 
-/* ===========================
-   FORM
-=========================== */
+/* ==========================================================
+                        FORM
+========================================================== */
 
 .form-group{
 
@@ -291,12 +297,12 @@ button:hover{
 
     display:block;
 
-    margin-bottom:8px;
-
     font-weight:600;
+
+    margin-bottom:8px;
 }
 
-input[type="text"],
+input[type=text],
 
 select,
 
@@ -304,27 +310,25 @@ textarea{
 
     width:100%;
 
-    padding:12px;
-
     border:1px solid #d1d5db;
 
     border-radius:8px;
 
+    padding:12px;
+
     font-size:15px;
 
     transition:.2s;
-
-    background:white;
 }
 
 textarea{
 
     resize:vertical;
 
-    min-height:180px;
+    min-height:220px;
 }
 
-input[type="text"]:focus,
+input[type=text]:focus,
 
 textarea:focus,
 
@@ -337,31 +341,27 @@ select:focus{
     box-shadow:0 0 6px rgba(37,99,235,.25);
 }
 
-input[type="file"]{
+input[type=file]{
 
     width:100%;
 
-    padding:12px;
-
-    border:1px dashed #9ca3af;
+    border:1px dashed #cbd5e1;
 
     border-radius:8px;
+
+    padding:12px;
 
     background:#fafafa;
 }
 
-/* ===========================
-   CHECKBOX
-=========================== */
-
-input[type="checkbox"]{
+input[type=checkbox]{
 
     margin-right:8px;
 }
 
-/* ===========================
-   MESSAGE
-=========================== */
+/* ==========================================================
+                        MESSAGE
+========================================================== */
 
 .message{
 
@@ -374,9 +374,9 @@ input[type="checkbox"]{
     color:#2563eb;
 }
 
-/* ===========================
-   FEEDBACK LIST
-=========================== */
+/* ==========================================================
+                    FEEDBACK LIST
+========================================================== */
 
 .feedback-list{
 
@@ -384,8 +384,12 @@ input[type="checkbox"]{
 
     flex-direction:column;
 
-    gap:18px;
+    gap:20px;
 }
+
+/* ==========================================================
+                    FEEDBACK CARD
+========================================================== */
 
 .feedback-card{
 
@@ -395,11 +399,11 @@ input[type="checkbox"]{
 
     border-radius:10px;
 
-    padding:18px;
+    padding:20px;
 
     box-shadow:0 2px 8px rgba(0,0,0,.08);
 
-    transition:.2s;
+    transition:.25s;
 }
 
 .feedback-card:hover{
@@ -417,7 +421,22 @@ input[type="checkbox"]{
 .feedback-card p{
 
     margin-bottom:10px;
+
+    line-height:1.5;
 }
+
+.feedback-card hr{
+
+    border:none;
+
+    border-top:1px solid #e5e7eb;
+
+    margin:15px 0;
+}
+
+/* ==========================================================
+                    FEEDBACK ACTIONS
+========================================================== */
 
 .feedback-actions{
 
@@ -425,12 +444,21 @@ input[type="checkbox"]{
 
     gap:10px;
 
-    margin-top:15px;
+    flex-wrap:wrap;
+
+    margin-top:18px;
 }
 
-/* ===========================
-   ADMIN TOOLBAR
-=========================== */
+.feedback-actions button{
+
+    flex:1;
+
+    min-width:120px;
+}
+
+/* ==========================================================
+                    ADMIN TOOLBAR
+========================================================== */
 
 .admin-toolbar{
 
@@ -453,9 +481,9 @@ input[type="checkbox"]{
     width:180px;
 }
 
-/* ===========================
-   SCROLLBAR
-=========================== */
+/* ==========================================================
+                        SCROLLBAR
+========================================================== */
 
 ::-webkit-scrollbar{
 
@@ -464,7 +492,7 @@ input[type="checkbox"]{
 
 ::-webkit-scrollbar-track{
 
-    background:#eef1f5;
+    background:#eef2f7;
 }
 
 ::-webkit-scrollbar-thumb{
@@ -479,9 +507,9 @@ input[type="checkbox"]{
     background:#94a3b8;
 }
 
-/* ===========================
-   RESPONSIVE
-=========================== */
+/* ==========================================================
+                        RESPONSIVE
+========================================================== */
 
 @media(max-width:900px){
 
@@ -491,9 +519,9 @@ input[type="checkbox"]{
 
         height:auto;
 
-        padding:15px;
-
         gap:15px;
+
+        padding:15px;
     }
 
     .topbar-right{
@@ -519,7 +547,7 @@ input[type="checkbox"]{
 
     .sidebar button{
 
-        min-width:180px;
+        min-width:190px;
     }
 
     #content{
@@ -534,6 +562,16 @@ input[type="checkbox"]{
         align-items:flex-start;
 
         gap:15px;
+    }
+
+    .dashboard-grid{
+
+        grid-template-columns:1fr;
+    }
+
+    .feedback-actions{
+
+        flex-direction:column;
     }
 
 }

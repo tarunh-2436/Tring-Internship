@@ -1,3 +1,7 @@
+/********************************************************************
+                        CONFIGURATION
+********************************************************************/
+
 const API_URL =
     "https://eolass3b4k.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
@@ -10,60 +14,129 @@ const CLIENT_ID =
 const REDIRECT_URI =
     "https://d2q7n43zipfzc0.cloudfront.net/";
 
-/* ==========================================
-                AUTHENTICATION
-========================================== */
+
+/********************************************************************
+                        APPLICATION STATE
+********************************************************************/
+
+const AppState = {
+
+    currentPage:
+        "home",
+
+    currentUser:
+        null,
+
+    currentRole:
+        "guest",
+
+    feedbacks:
+        [],
+
+    selectedFeedback:
+        null
+
+};
+
+
+/********************************************************************
+                        AUTHENTICATION
+********************************************************************/
 
 function login() {
 
     const loginUrl =
-        `${COGNITO_DOMAIN}/login` +
-        `?client_id=${CLIENT_ID}` +
-        `&response_type=code` +
-        `&scope=openid+email+profile` +
-        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    window.location.href = loginUrl;
+        `${COGNITO_DOMAIN}/login`
+
+        + `?client_id=${CLIENT_ID}`
+
+        + `&response_type=code`
+
+        + `&scope=openid+email+profile`
+
+        + `&redirect_uri=${encodeURIComponent(
+            REDIRECT_URI
+        )}`;
+
+    window.location.href =
+        loginUrl;
 }
+
 
 function signup() {
 
     const signupUrl =
-        `${COGNITO_DOMAIN}/signup` +
-        `?client_id=${CLIENT_ID}` +
-        `&response_type=code` +
-        `&scope=openid+email+profile` +
-        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    window.location.href = signupUrl;
+        `${COGNITO_DOMAIN}/signup`
+
+        + `?client_id=${CLIENT_ID}`
+
+        + `&response_type=code`
+
+        + `&scope=openid+email+profile`
+
+        + `&redirect_uri=${encodeURIComponent(
+            REDIRECT_URI
+        )}`;
+
+    window.location.href =
+        signupUrl;
 }
+
 
 function logout() {
 
-    localStorage.removeItem("id_token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    localStorage.removeItem(
+        "id_token"
+    );
+
+    localStorage.removeItem(
+        "access_token"
+    );
+
+    localStorage.removeItem(
+        "refresh_token"
+    );
 
     const logoutUrl =
-        `${COGNITO_DOMAIN}/logout` +
-        `?client_id=${CLIENT_ID}` +
-        `&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    window.location.href = logoutUrl;
+        `${COGNITO_DOMAIN}/logout`
+
+        + `?client_id=${CLIENT_ID}`
+
+        + `&logout_uri=${encodeURIComponent(
+            REDIRECT_URI
+        )}`;
+
+    window.location.href =
+        logoutUrl;
 }
+
+
+/********************************************************************
+                        JWT HELPERS
+********************************************************************/
 
 function parseJwt(token) {
 
     return JSON.parse(
+
         atob(
+
             token.split(".")[1]
+
         )
+
     );
+
 }
+
 
 function getCurrentUser() {
 
     const token =
+
         localStorage.getItem(
             "id_token"
         );
@@ -73,15 +146,38 @@ function getCurrentUser() {
 
     try {
 
-        return parseJwt(token);
+        return parseJwt(
+            token
+        );
 
     }
 
     catch {
 
         return null;
+
     }
+
 }
+
+
+function getAccessToken() {
+
+    return localStorage.getItem(
+        "access_token"
+    );
+
+}
+
+
+function getRefreshToken() {
+
+    return localStorage.getItem(
+        "refresh_token"
+    );
+
+}
+
 
 function getUserRole() {
 
@@ -92,27 +188,44 @@ function getUserRole() {
         return "guest";
 
     const groups =
-        user["cognito:groups"] || [];
+
+        user[
+            "cognito:groups"
+        ] || [];
 
     if (
-        groups.includes("admins")
+        groups.includes(
+            "admins"
+        )
     ) {
 
         return "admin";
+
     }
 
     return "user";
+
 }
+
+
+/********************************************************************
+                HANDLE COGNITO CALLBACK
+********************************************************************/
 
 async function handleAuthCallback() {
 
     const params =
+
         new URLSearchParams(
+
             window.location.search
+
         );
 
     const code =
-        params.get("code");
+        params.get(
+            "code"
+        );
 
     if (!code)
         return;
@@ -120,34 +233,42 @@ async function handleAuthCallback() {
     try {
 
         const response =
+
             await fetch(
 
                 `${COGNITO_DOMAIN}/oauth2/token`,
 
                 {
 
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
 
                         "Content-Type":
-                            "application/x-www-form-urlencoded"
+
+                        "application/x-www-form-urlencoded"
 
                     },
 
                     body:
+
                         new URLSearchParams({
 
                             grant_type:
+
                                 "authorization_code",
 
                             client_id:
+
                                 CLIENT_ID,
 
                             code:
+
                                 code,
 
                             redirect_uri:
+
                                 REDIRECT_URI
 
                         })
@@ -160,48 +281,69 @@ async function handleAuthCallback() {
             await response.json();
 
         localStorage.setItem(
+
             "id_token",
+
             tokens.id_token
+
         );
 
         localStorage.setItem(
+
             "access_token",
+
             tokens.access_token
+
         );
 
         localStorage.setItem(
+
             "refresh_token",
+
             tokens.refresh_token
+
         );
 
         window.history.replaceState(
+
             {},
+
             document.title,
+
             "/"
+
         );
 
     }
 
-    catch (err) {
+    catch (error) {
 
-        console.error(err);
+        console.error(
+
+            error
+
+        );
 
     }
 
 }
 
-/* ==========================================
-                USER STATUS
-========================================== */
+
+/********************************************************************
+                        USER STATUS
+********************************************************************/
 
 function updateUserStatus() {
 
-    const element =
+    const statusElement =
+
         document.getElementById(
+
             "user-status"
+
         );
 
-    if (!element)
+    if (!statusElement)
         return;
 
     const user =
@@ -209,74 +351,266 @@ function updateUserStatus() {
 
     if (!user) {
 
-        element.innerHTML =
+        AppState.currentUser =
+            null;
+
+        AppState.currentRole =
+            "guest";
+
+        statusElement.innerHTML =
+
             "Browsing as Guest";
 
     }
 
     else {
 
-        element.innerHTML =
-            `Logged in as ${user.email} (${getUserRole()})`;
+        AppState.currentUser =
+            user;
+
+        AppState.currentRole =
+            getUserRole();
+
+        statusElement.innerHTML =
+
+            `Logged in as
+
+            ${user.email}
+
+            (${AppState.currentRole})`;
 
     }
 
     toggleRoleBasedUI();
+
 }
+
+
+/********************************************************************
+                    ROLE BASED UI
+********************************************************************/
 
 function toggleRoleBasedUI() {
 
     const adminButton =
+
         document.getElementById(
+
             "admin-export"
+
         );
 
     if (!adminButton)
         return;
 
     adminButton.style.display =
-        getUserRole() === "admin"
-            ? "block"
-            : "none";
+
+        AppState.currentRole ===
+        "admin"
+
+        ?
+
+        "block"
+
+        :
+
+        "none";
+
 }
 
-/* ==========================================
-                NAVIGATION
-========================================== */
 
-function renderTemplate(id) {
+/********************************************************************
+                    NAVIGATION
+********************************************************************/
+
+function renderTemplate(
+
+    templateId
+
+) {
 
     const content =
+
         document.getElementById(
+
             "content"
+
         );
 
+    if (!content)
+        return;
+
     const template =
+
         document.getElementById(
-            id
+
+            templateId
+
         );
 
     content.innerHTML =
+
         "";
 
     content.appendChild(
-        template.content.cloneNode(true)
+
+        template.content.cloneNode(
+
+            true
+
+        )
+
     );
+
 }
+
+
+function navigate(
+
+    page
+
+) {
+
+    AppState.currentPage =
+        page;
+
+    switch (page) {
+
+        case "home":
+
+            showHome();
+
+            break;
+
+        case "submit":
+
+            showSubmit();
+
+            break;
+
+        case "my-feedback":
+
+            showMyFeedback();
+
+            break;
+
+        case "admin":
+
+            showAdminDashboard();
+
+            break;
+
+        default:
+
+            showHome();
+
+    }
+
+}
+
+
+function initializeNavigation() {
+
+    document
+
+        .getElementById(
+
+            "nav-home"
+
+        )
+
+        .onclick =
+
+        () =>
+
+        navigate(
+
+            "home"
+
+        );
+
+    document
+
+        .getElementById(
+
+            "nav-submit"
+
+        )
+
+        .onclick =
+
+        () =>
+
+        navigate(
+
+            "submit"
+
+        );
+
+    document
+
+        .getElementById(
+
+            "nav-my-feedback"
+
+        )
+
+        .onclick =
+
+        () =>
+
+        navigate(
+
+            "my-feedback"
+
+        );
+
+    const adminButton =
+
+        document.getElementById(
+
+            "admin-export"
+
+        );
+
+    if (adminButton) {
+
+        adminButton.onclick =
+
+            () =>
+
+            navigate(
+
+                "admin"
+
+            );
+
+    }
+
+}
+
+
+/********************************************************************
+                    PAGE RENDERING
+********************************************************************/
 
 function showHome() {
 
     renderTemplate(
         "home-template"
     );
+
 }
+
 
 function showSubmit() {
 
     renderTemplate(
         "submit-template"
     );
+
 }
+
 
 function showMyFeedback() {
 
@@ -284,13 +618,14 @@ function showMyFeedback() {
         "my-feedback-template"
     );
 
-    fetchFeedback();
+    loadMyFeedback();
+
 }
 
-function showAdminDashboard() {
+function showAdminDashboard(){
 
     if (
-        getUserRole() !==
+        AppState.currentRole !==
         "admin"
     ) {
 
@@ -298,277 +633,168 @@ function showAdminDashboard() {
             "Admin access required."
         );
 
+        navigate(
+            "home"
+        );
+
         return;
     }
 
     renderTemplate(
+
         "admin-template"
+
     );
 
-    fetchFeedback();
-}
-
-function initializeNavigation() {
-
-    document
-        .getElementById(
-            "nav-dashboard"
-        )
-        .onclick =
-        showHome;
-
-    document
-        .getElementById(
-            "nav-submit"
-        )
-        .onclick =
-        showSubmit;
-
-    document
-        .getElementById(
-            "nav-my-feedback"
-        )
-        .onclick =
-        showMyFeedback;
-
-    document
-        .getElementById(
-            "admin-export"
-        )
-        .onclick =
-        showAdminDashboard;
-}
-
-/* ==========================================
-                SUBMIT
-========================================== */
-
-async function submitFeedback() {
-
-    const feedback =
-        document
-            .getElementById(
-                "feedback"
-            )
-            .value
-            .trim();
-
-    const anonymous =
-        document
-            .getElementById(
-                "anonymous"
-            )
-            .checked;
-
-    if (!feedback) {
-
-        document
-            .getElementById(
-                "message"
-            )
-            .innerHTML =
-            "Please enter feedback.";
-
-        return;
-    }
-
-    const endpoint =
-        anonymous
-            ? `${API_URL}/anonymous`
-            : API_URL;
-
-    const headers = {
-
-        "Content-Type":
-            "application/json"
-
-    };
-
-    if (!anonymous) {
-
-        const token =
-            localStorage.getItem(
-                "access_token"
-            );
-
-        if (!token) {
-
-            document
-                .getElementById(
-                    "message"
-                )
-                .innerHTML =
-                "Please login or submit anonymously.";
-
-            return;
-        }
-
-        headers.Authorization =
-            `Bearer ${token}`;
-
-    }
-
-    try {
-
-        const response =
-            await fetch(
-
-                endpoint,
-
-                {
-
-                    method:
-                        "POST",
-
-                    headers,
-
-                    body:
-                        JSON.stringify({
-
-                            feedback:
-                                feedback
-
-                        })
-
-                }
-
-            );
-
-        const result =
-            await response.json();
-
-        document
-            .getElementById(
-                "message"
-            )
-            .innerHTML =
-            result.message;
-
-        document
-            .getElementById(
-                "feedback"
-            )
-            .value =
-            "";
-
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-        document
-            .getElementById(
-                "message"
-            )
-            .innerHTML =
-            "Unable to connect.";
-
-    }
+    loadAdminFeedback();
 
 }
 
-/* ==========================================
-                FETCH
-========================================== */
+/********************************************************************
+                    LOAD DATA
+********************************************************************/
 
-async function fetchFeedback() {
+async function loadMyFeedback(){
 
-    const token =
-        localStorage.getItem(
-            "access_token"
-        );
+    const feedbacks =
 
-    if (!token) {
+        await fetchMyFeedback();
 
-        alert(
-            "Please login."
-        );
+    AppState.feedbacks =
+        feedbacks;
 
-        return;
-    }
+    renderFeedbackCards(
 
-    try {
+        feedbacks,
 
-        const response =
-            await fetch(
+        {
 
-                API_URL,
+            showOwner:false,
 
-                {
+            canEdit:true,
 
-                    headers: {
+            canDelete:true,
 
-                        Authorization:
-                            `Bearer ${token}`
-
-                    }
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            alert(
-                "Unable to load feedback."
-            );
-
-            return;
+            canDownload:false
 
         }
 
-        const feedbacks =
-            await response.json();
-
-        renderFeedbackPreview(
-            feedbacks
-        );
-
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-    }
+    );
 
 }
 
-/* ==========================================
-                RENDER
-========================================== */
 
-function renderFeedbackPreview(
-    feedbacks
+async function loadAdminFeedback(){
+
+    const feedbacks =
+
+        await fetchAdminFeedback();
+
+    AppState.feedbacks =
+        feedbacks;
+
+    renderFeedbackCards(
+
+        feedbacks,
+
+        {
+
+            showOwner:true,
+
+            canEdit:false,
+
+            canDelete:false,
+
+            canDownload:true
+
+        }
+
+    );
+
+}
+
+
+/********************************************************************
+                FEEDBACK CARD RENDERER
+********************************************************************/
+
+function renderFeedbackCards(
+
+    feedbacks,
+
+    options
+
 ) {
 
-    const preview =
+    const container =
+
         document.getElementById(
+
             "feedback-preview"
+
         );
 
-    if (!preview)
+    if (!container)
         return;
 
-    preview.innerHTML =
+    container.innerHTML =
         "";
 
     if (
+
+        !feedbacks ||
+
         feedbacks.length === 0
+
     ) {
 
-        preview.innerHTML =
-            "<p>No feedback found.</p>";
+        container.innerHTML =
+
+        `
+
+        <div class="feedback-card">
+
+            <h3>
+
+                No Feedback Found
+
+            </h3>
+
+            <p>
+
+                Nothing to display.
+
+            </p>
+
+        </div>
+
+        `;
 
         return;
+
     }
 
     feedbacks.forEach(
 
         item => {
 
+            const preview =
+
+                item.content
+
+                ?
+
+                item.content.substring(
+                    0,
+                    120
+                )
+
+                :
+
+                "";
+
             const card =
+
                 document.createElement(
                     "div"
                 );
@@ -578,47 +804,149 @@ function renderFeedbackPreview(
 
             card.innerHTML =
 
+            `
+
+            <h3>
+
+                ${item.title || "Untitled"}
+
+            </h3>
+
+            <p>
+
+                <strong>Status:</strong>
+
+                ${item.status || "ACTIVE"}
+
+            </p>
+
+            ${
+
+                options.showOwner
+
+                ?
+
                 `
-                <h3>
-                    ${item.title || "Untitled"}
-                </h3>
 
                 <p>
 
-                    ${item.content || ""}
+                    <strong>Owner:</strong>
+
+                    ${item.ownerId}
 
                 </p>
 
-                <small>
+                `
 
-                    ${item.lastUpdated || ""}
+                :
 
-                </small>
+                ""
 
-                <div class="feedback-actions">
+            }
 
-                    <button>
+            <p>
 
-                        View
+                <strong>Updated:</strong>
 
-                    </button>
+                ${item.lastUpdated || ""}
 
-                    <button>
+            </p>
+
+            <hr>
+
+            <p>
+
+                ${preview}
+
+            </p>
+
+            <div class="feedback-actions">
+
+                <button
+
+                    onclick="viewFeedback('${item.feedbackId}')">
+
+                    View
+
+                </button>
+
+                ${
+
+                    options.canEdit
+
+                    ?
+
+                    `
+
+                    <button
+
+                        onclick="editFeedback('${item.feedbackId}')">
 
                         Edit
 
                     </button>
 
-                    <button>
+                    `
+
+                    :
+
+                    ""
+
+                }
+
+                ${
+
+                    options.canDelete
+
+                    ?
+
+                    `
+
+                    <button
+
+                        onclick="deleteFeedback('${item.feedbackId}')">
 
                         Delete
 
                     </button>
 
-                </div>
-                `;
+                    `
 
-            preview.appendChild(
+                    :
+
+                    ""
+
+                }
+
+                ${
+
+                    options.canDownload
+
+                    ?
+
+                    `
+
+                    <button
+
+                        onclick="downloadFeedback('${item.feedbackId}')">
+
+                        Download
+
+                    </button>
+
+                    `
+
+                    :
+
+                    ""
+
+                }
+
+            </div>
+
+            `;
+
+            container.appendChild(
                 card
             );
 
@@ -628,12 +956,486 @@ function renderFeedbackPreview(
 
 }
 
-/* ==========================================
-                INITIALIZE
-========================================== */
 
-window.onload =
-async function () {
+/********************************************************************
+                SELECT FEEDBACK
+********************************************************************/
+
+function findFeedback(
+
+    feedbackId
+
+) {
+
+    return AppState.feedbacks.find(
+
+        feedback =>
+
+        feedback.feedbackId ===
+        feedbackId
+
+    );
+
+}
+
+
+function viewFeedback(
+
+    feedbackId
+
+) {
+
+    AppState.selectedFeedback =
+
+        findFeedback(
+            feedbackId
+        );
+
+    alert(
+
+        "View functionality will be connected to GET /feedback/{id}"
+
+    );
+
+}
+
+
+function editFeedback(
+
+    feedbackId
+
+) {
+
+    AppState.selectedFeedback =
+
+        findFeedback(
+            feedbackId
+        );
+
+    alert(
+
+        "Edit functionality will be connected to PUT /feedback/{id}"
+
+    );
+
+}
+
+
+function deleteFeedback(
+
+    feedbackId
+
+) {
+
+    AppState.selectedFeedback =
+
+        findFeedback(
+            feedbackId
+        );
+
+    if (
+
+        confirm(
+
+            "Delete this feedback?"
+
+        )
+
+    ) {
+
+        alert(
+
+            "DELETE endpoint will be called for:\n\n"
+
+            +
+
+            feedbackId
+
+        );
+
+    }
+
+}
+
+
+function downloadFeedback(
+
+    feedbackId
+
+) {
+
+    AppState.selectedFeedback =
+
+        findFeedback(
+            feedbackId
+        );
+
+    alert(
+
+        "Download endpoint will be connected for:\n\n"
+
+        +
+
+        feedbackId
+
+    );
+
+}
+
+/********************************************************************
+                    BACKEND API
+********************************************************************/
+
+async function submitFeedback() {
+
+    const feedbackElement =
+
+        document.getElementById(
+            "feedback"
+        );
+
+    const anonymousElement =
+
+        document.getElementById(
+            "anonymous"
+        );
+
+    const messageElement =
+
+        document.getElementById(
+            "message"
+        );
+
+    if (!feedbackElement)
+        return;
+
+    const feedback =
+
+        feedbackElement.value.trim();
+
+    if (!feedback) {
+
+        if (messageElement) {
+
+            messageElement.innerHTML =
+
+                "Please enter feedback.";
+
+        }
+
+        return;
+
+    }
+
+    const anonymous =
+
+        anonymousElement
+
+        ?
+
+        anonymousElement.checked
+
+        :
+
+        false;
+
+    const endpoint =
+
+        anonymous
+
+        ?
+
+        `${API_URL}/anonymous`
+
+        :
+
+        API_URL;
+
+    const headers = {
+
+        "Content-Type":
+
+            "application/json"
+
+    };
+
+    if (!anonymous) {
+
+        const accessToken =
+
+            getAccessToken();
+
+        if (!accessToken) {
+
+            if (messageElement) {
+
+                messageElement.innerHTML =
+
+                    "Please login or submit anonymously.";
+
+            }
+
+            return;
+
+        }
+
+        headers.Authorization =
+
+            `Bearer ${accessToken}`;
+
+    }
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                endpoint,
+
+                {
+
+                    method:
+
+                        "POST",
+
+                    headers,
+
+                    body:
+
+                        JSON.stringify({
+
+                            feedback:
+
+                                feedback
+
+                        })
+
+                }
+
+            );
+
+        const result =
+
+            await response.json();
+
+        if (messageElement) {
+
+            messageElement.innerHTML =
+
+                result.message;
+
+        }
+
+        feedbackElement.value =
+
+            "";
+
+    }
+
+    catch (error) {
+
+        console.error(
+
+            error
+
+        );
+
+        if (messageElement) {
+
+            messageElement.innerHTML =
+
+                "Unable to connect to server.";
+
+        }
+
+    }
+
+}
+
+
+/********************************************************************
+                    FETCH FEEDBACK
+********************************************************************/
+
+async function fetchMyFeedback() {
+
+    const accessToken =
+        getAccessToken();
+
+    if (!accessToken) {
+
+        alert(
+            "Please login."
+        );
+
+        return [];
+    }
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                API_URL,
+
+                {
+
+                    headers:{
+
+                        Authorization:
+                        `Bearer ${accessToken}`
+
+                    }
+
+                }
+
+            );
+
+        if(!response.ok){
+
+            throw new Error(
+                "Unable to fetch feedback"
+            );
+
+        }
+
+        return await response.json();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        return [];
+
+    }
+
+}
+
+async function fetchAdminFeedback() {
+
+    const accessToken =
+        getAccessToken();
+
+    if (!accessToken) {
+
+        alert(
+            "Please login."
+        );
+
+        return [];
+    }
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                `${API_URL}/admin`,
+
+                {
+
+                    headers:{
+
+                        Authorization:
+                        `Bearer ${accessToken}`
+
+                    }
+
+                }
+
+            );
+
+        if(!response.ok){
+
+            throw new Error(
+                "Unable to fetch feedback"
+            );
+
+        }
+
+        return await response.json();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        return [];
+
+    }
+
+}
+
+/********************************************************************
+                    FUTURE CRUD
+********************************************************************/
+
+async function updateFeedback(
+
+    feedbackId,
+
+    payload
+
+) {
+
+    console.log(
+
+        "Future PUT:",
+
+        feedbackId,
+
+        payload
+
+    );
+
+}
+
+
+async function removeFeedback(
+
+    feedbackId
+
+) {
+
+    console.log(
+
+        "Future DELETE:",
+
+        feedbackId
+
+    );
+
+}
+
+
+async function downloadFeedbackFile(
+
+    feedbackId
+
+) {
+
+    console.log(
+
+        "Future DOWNLOAD:",
+
+        feedbackId
+
+    );
+
+}
+
+
+/********************************************************************
+                    APPLICATION STARTUP
+********************************************************************/
+
+async function initializeApplication() {
 
     await handleAuthCallback();
 
@@ -641,6 +1443,23 @@ async function () {
 
     initializeNavigation();
 
-    showHome();
+    navigate(
+
+        "home"
+
+    );
+
+}
+
+
+/********************************************************************
+                    WINDOW LOAD
+********************************************************************/
+
+window.onload =
+
+async function () {
+
+    await initializeApplication();
 
 };
