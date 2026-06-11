@@ -243,9 +243,9 @@ resource "aws_lambda_function" "feedback_api" {
   memory_size   = 256
   timeout       = 30
 
-  filename = "${path.module}/../lambda/lambda_function.zip"
+  filename = "${path.module}/../lambda/lambda.zip"
 
-  source_code_hash = filebase64sha256("${path.module}/../lambda/lambda_function.zip")
+  source_code_hash = filebase64sha256("${path.module}/../lambda/lambda.zip")
 
   environment {
     variables = {
@@ -270,7 +270,7 @@ resource "aws_apigatewayv2_api" "feedback_api" {
 
   cors_configuration {
     allow_headers = ["*"]
-    allow_methods = ["GET", "POST"]
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_origins = ["*"]
   }
 }
@@ -301,6 +301,32 @@ resource "aws_apigatewayv2_route" "get_admin_feedback_route" {
   authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "get_single_feedback_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "GET /feedback/{ownerId}/{feedbackId}"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "download_feedback_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "GET /feedback/{ownerId}/{feedbackId}/download"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "post_feedback_route" {
 
   api_id = aws_apigatewayv2_api.feedback_api.id
@@ -321,6 +347,32 @@ resource "aws_apigatewayv2_route" "post_feedback_anonymous_route" {
   route_key = "POST /feedback/anonymous"
 
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "edit_feedback_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "PUT /feedback/{ownerId}/{feedbackId}"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_feedback_route" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  route_key = "DELETE /feedback/{ownerId}/{feedbackId}"
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+
+  authorization_type = "JWT"
+
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {

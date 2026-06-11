@@ -257,9 +257,7 @@
 
             rows="10"
 
-            placeholder="Enter your feedback">
-
-        </textarea>
+            placeholder="Enter your feedback"></textarea>
 
     </div>
 
@@ -401,6 +399,132 @@
 </section>
 
 </template>
+
+<!-- =====================================================
+                    FEEDBACK MODAL
+====================================================== -->
+
+<div
+    id="feedbackModal"
+    class="modal">
+
+    <div class="modal-content">
+
+        <h2 id="modalTitle">
+
+            Feedback Details
+
+        </h2>
+
+        <p id="modalSubtitle">
+
+        </p>
+
+        <label>
+
+            Title
+
+        </label>
+
+        <input
+            id="feedbackTitle"
+            type="text">
+
+        <label>
+
+            Content
+
+        </label>
+
+        <textarea
+            id="feedbackContent"
+            rows="10">
+
+        </textarea>
+
+        <label>
+
+            Created At
+
+        </label>
+
+        <input
+            id="feedbackCreated"
+            type="text"
+            readonly>
+
+        <label>
+
+            Last Updated
+
+        </label>
+
+        <input
+            id="feedbackUpdated"
+            type="text"
+            readonly>
+
+        <label>
+
+            Attachments
+
+        </label>
+
+        <div
+            id="feedbackAttachments"
+            class="attachments-container">
+
+            No attachments
+
+        </div>
+
+    <div class="modal-footer">
+
+        <button
+            id="closeBtn"
+            onclick="closeFeedbackModal()">
+
+            Close
+
+        </button>
+
+        <button
+            id="editBtn"
+            onclick="switchToEditMode()">
+
+            Edit
+
+        </button>
+
+        <button
+            id="deleteBtn"
+            onclick="deleteSelectedFeedback()">
+
+            Delete
+
+        </button>
+
+        <button
+            id="downloadBtn"
+            onclick="downloadSelectedFeedback()">
+
+            Download
+
+        </button>
+
+        <button
+            id="saveBtn"
+            onclick="saveFeedback()">
+
+            Save
+
+        </button>
+
+    </div>
+
+    </div>
+
+</div>
 
 
 

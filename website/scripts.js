@@ -3,16 +3,16 @@
 ********************************************************************/
 
 const API_URL =
-    "https://eolass3b4k.execute-api.us-east-1.amazonaws.com/prod/feedback";
+    "https://0tsyt0g77j.execute-api.us-east-1.amazonaws.com/prod/feedback";
 
 const COGNITO_DOMAIN =
     "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
 
 const CLIENT_ID =
-    "7euj00ss96mont8obdp64egv3l";
+    "6lo2tosllipdsnteas7i9j85ao";
 
 const REDIRECT_URI =
-    "https://d2q7n43zipfzc0.cloudfront.net/";
+    "https://d14npegu4204tc.cloudfront.net/";
 
 
 /********************************************************************
@@ -21,20 +21,17 @@ const REDIRECT_URI =
 
 const AppState = {
 
-    currentPage:
-        "home",
+    currentPage: "home",
 
-    currentUser:
-        null,
+    currentUser: null,
 
-    currentRole:
-        "guest",
+    currentRole: "guest",
 
-    feedbacks:
-        [],
+    feedbacks: [],
 
-    selectedFeedback:
-        null
+    selectedFeedback: null,
+
+    modalMode: "view"
 
 };
 
@@ -61,6 +58,7 @@ function login() {
 
     window.location.href =
         loginUrl;
+
 }
 
 
@@ -82,6 +80,7 @@ function signup() {
 
     window.location.href =
         signupUrl;
+
 }
 
 
@@ -111,6 +110,7 @@ function logout() {
 
     window.location.href =
         logoutUrl;
+
 }
 
 
@@ -141,8 +141,11 @@ function getCurrentUser() {
             "id_token"
         );
 
-    if (!token)
+    if (!token) {
+
         return null;
+
+    }
 
     try {
 
@@ -152,7 +155,9 @@ function getCurrentUser() {
 
     }
 
-    catch {
+    catch (error) {
+
+        console.error(error);
 
         return null;
 
@@ -184,8 +189,11 @@ function getUserRole() {
     const user =
         getCurrentUser();
 
-    if (!user)
+    if (!user) {
+
         return "guest";
+
+    }
 
     const groups =
 
@@ -194,9 +202,11 @@ function getUserRole() {
         ] || [];
 
     if (
+
         groups.includes(
             "admins"
         )
+
     ) {
 
         return "admin";
@@ -206,7 +216,6 @@ function getUserRole() {
     return "user";
 
 }
-
 
 /********************************************************************
                 HANDLE COGNITO CALLBACK
@@ -223,12 +232,16 @@ async function handleAuthCallback() {
         );
 
     const code =
+
         params.get(
             "code"
         );
 
-    if (!code)
+    if (!code) {
+
         return;
+
+    }
 
     try {
 
@@ -247,7 +260,7 @@ async function handleAuthCallback() {
 
                         "Content-Type":
 
-                        "application/x-www-form-urlencoded"
+                            "application/x-www-form-urlencoded"
 
                     },
 
@@ -276,6 +289,14 @@ async function handleAuthCallback() {
                 }
 
             );
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to exchange authorization code."
+            );
+
+        }
 
         const tokens =
             await response.json();
@@ -318,11 +339,7 @@ async function handleAuthCallback() {
 
     catch (error) {
 
-        console.error(
-
-            error
-
-        );
+        console.error(error);
 
     }
 
@@ -343,8 +360,11 @@ function updateUserStatus() {
 
         );
 
-    if (!statusElement)
+    if (!statusElement) {
+
         return;
+
+    }
 
     const user =
         getCurrentUser();
@@ -400,8 +420,11 @@ function toggleRoleBasedUI() {
 
         );
 
-    if (!adminButton)
+    if (!adminButton) {
+
         return;
+
+    }
 
     adminButton.style.display =
 
@@ -417,7 +440,6 @@ function toggleRoleBasedUI() {
         "none";
 
 }
-
 
 /********************************************************************
                     NAVIGATION
@@ -437,8 +459,11 @@ function renderTemplate(
 
         );
 
-    if (!content)
+    if (!content) {
+
         return;
+
+    }
 
     const template =
 
@@ -447,6 +472,18 @@ function renderTemplate(
             templateId
 
         );
+
+    if (!template) {
+
+        console.error(
+
+            `Template not found: ${templateId}`
+
+        );
+
+        return;
+
+    }
 
     content.innerHTML =
 
@@ -597,7 +634,9 @@ function initializeNavigation() {
 function showHome() {
 
     renderTemplate(
+
         "home-template"
+
     );
 
 }
@@ -606,7 +645,9 @@ function showHome() {
 function showSubmit() {
 
     renderTemplate(
+
         "submit-template"
+
     );
 
 }
@@ -615,29 +656,39 @@ function showSubmit() {
 function showMyFeedback() {
 
     renderTemplate(
+
         "my-feedback-template"
+
     );
 
     loadMyFeedback();
 
 }
 
-function showAdminDashboard(){
+
+function showAdminDashboard() {
 
     if (
+
         AppState.currentRole !==
         "admin"
+
     ) {
 
         alert(
+
             "Admin access required."
+
         );
 
         navigate(
+
             "home"
+
         );
 
         return;
+
     }
 
     renderTemplate(
@@ -650,11 +701,12 @@ function showAdminDashboard(){
 
 }
 
+
 /********************************************************************
                     LOAD DATA
 ********************************************************************/
 
-async function loadMyFeedback(){
+async function loadMyFeedback() {
 
     const feedbacks =
 
@@ -669,13 +721,17 @@ async function loadMyFeedback(){
 
         {
 
-            showOwner:false,
+            showOwner:
+                false,
 
-            canEdit:true,
+            canEdit:
+                true,
 
-            canDelete:true,
+            canDelete:
+                true,
 
-            canDownload:false
+            canDownload:
+                false
 
         }
 
@@ -684,7 +740,7 @@ async function loadMyFeedback(){
 }
 
 
-async function loadAdminFeedback(){
+async function loadAdminFeedback() {
 
     const feedbacks =
 
@@ -699,13 +755,17 @@ async function loadAdminFeedback(){
 
         {
 
-            showOwner:true,
+            showOwner:
+                true,
 
-            canEdit:false,
+            canEdit:
+                false,
 
-            canDelete:false,
+            canDelete:
+                false,
 
-            canDownload:true
+            canDownload:
+                true
 
         }
 
@@ -734,10 +794,14 @@ function renderFeedbackCards(
 
         );
 
-    if (!container)
+    if (!container) {
+
         return;
 
+    }
+
     container.innerHTML =
+
         "";
 
     if (
@@ -785,8 +849,11 @@ function renderFeedbackCards(
                 ?
 
                 item.content.substring(
+
                     0,
+
                     120
+
                 )
 
                 :
@@ -796,10 +863,13 @@ function renderFeedbackCards(
             const card =
 
                 document.createElement(
+
                     "div"
+
                 );
 
             card.className =
+
                 "feedback-card";
 
             card.innerHTML =
@@ -947,7 +1017,9 @@ function renderFeedbackCards(
             `;
 
             container.appendChild(
+
                 card
+
             );
 
         }
@@ -971,15 +1043,20 @@ function findFeedback(
 
         feedback =>
 
-        feedback.feedbackId ===
-        feedbackId
+            feedback.feedbackId ===
+
+            feedbackId
 
     );
 
 }
 
 
-function viewFeedback(
+/********************************************************************
+                    VIEW
+********************************************************************/
+
+async function viewFeedback(
 
     feedbackId
 
@@ -988,68 +1065,220 @@ function viewFeedback(
     AppState.selectedFeedback =
 
         findFeedback(
+
             feedbackId
-        );
 
-    alert(
-
-        "View functionality will be connected to GET /feedback/{id}"
-
-    );
-
-}
-
-
-function editFeedback(
-
-    feedbackId
-
-) {
-
-    AppState.selectedFeedback =
-
-        findFeedback(
-            feedbackId
-        );
-
-    alert(
-
-        "Edit functionality will be connected to PUT /feedback/{id}"
-
-    );
-
-}
-
-
-function deleteFeedback(
-
-    feedbackId
-
-) {
-
-    AppState.selectedFeedback =
-
-        findFeedback(
-            feedbackId
         );
 
     if (
 
-        confirm(
-
-            "Delete this feedback?"
-
-        )
+        !AppState.selectedFeedback
 
     ) {
 
         alert(
 
-            "DELETE endpoint will be called for:\n\n"
+            "Feedback not found."
 
-            +
+        );
+
+        return;
+
+    }
+
+    await loadSingleFeedback(
+
+        "view"
+
+    );
+
+}
+
+
+/********************************************************************
+                    EDIT
+********************************************************************/
+
+async function editFeedback(
+
+    feedbackId
+
+) {
+
+    AppState.selectedFeedback =
+
+        findFeedback(
 
             feedbackId
+
+        );
+
+    if (
+
+        !AppState.selectedFeedback
+
+    ) {
+
+        alert(
+
+            "Feedback not found."
+
+        );
+
+        return;
+
+    }
+
+    await loadSingleFeedback(
+
+        "edit"
+
+    );
+
+}
+
+
+/********************************************************************
+                    DELETE
+********************************************************************/
+
+async function deleteFeedback(
+
+    feedbackId
+
+) {
+
+    const feedback =
+
+        findFeedback(
+
+            feedbackId
+
+        );
+
+    if (
+
+        !feedback
+
+    ) {
+
+        alert(
+
+            "Feedback not found."
+
+        );
+
+        return;
+
+    }
+
+    const confirmed =
+
+        confirm(
+
+            "Are you sure you want to delete this feedback?"
+
+        );
+
+    if (
+
+        !confirmed
+
+    ) {
+
+        return;
+
+    }
+
+    const accessToken =
+
+        getAccessToken();
+
+    if (
+
+        !accessToken
+
+    ) {
+
+        alert(
+
+            "Please login."
+
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
+
+                {
+
+                    method:
+
+                        "DELETE",
+
+                    headers: {
+
+                        Authorization:
+
+                            `Bearer ${accessToken}`
+
+                    }
+
+                }
+
+            );
+
+        if (
+
+            !response.ok
+
+        ) {
+
+            throw new Error(
+
+                await response.text()
+
+            );
+
+        }
+
+        AppState.selectedFeedback =
+
+            null;
+
+        alert(
+
+            "Feedback deleted successfully."
+
+        );
+
+        await loadMyFeedback();
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            error
+
+        );
+
+        alert(
+
+            "Unable to delete feedback."
 
         );
 
@@ -1058,27 +1287,541 @@ function deleteFeedback(
 }
 
 
-function downloadFeedback(
+/********************************************************************
+                    DOWNLOAD
+********************************************************************/
 
+async function downloadFeedback(
     feedbackId
-
 ) {
 
-    AppState.selectedFeedback =
-
+    const feedback =
         findFeedback(
             feedbackId
         );
 
-    alert(
+    if (!feedback) {
 
-        "Download endpoint will be connected for:\n\n"
+        alert(
+            "Feedback not found."
+        );
 
-        +
+        return;
 
-        feedbackId
+    }
+
+    const accessToken =
+        getAccessToken();
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/download`,
+
+                {
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${accessToken}`
+
+                    }
+
+                }
+
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                await response.text()
+            );
+
+        }
+
+        const blob =
+            await response.blob();
+
+        const url =
+            window.URL.createObjectURL(
+                blob
+            );
+
+        const link =
+            document.createElement(
+                "a"
+            );
+
+        link.href =
+            url;
+
+        link.download =
+            `feedback-${feedback.feedbackId}.txt`;
+
+        document.body.appendChild(
+            link
+        );
+
+        link.click();
+
+        link.remove();
+
+        window.URL.revokeObjectURL(
+            url
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to download feedback."
+        );
+
+    }
+
+}
+
+/********************************************************************
+                    MODAL HANDLER
+********************************************************************/
+
+function openFeedbackModal(
+    feedback,
+    mode
+) {
+
+    AppState.modalMode =
+        mode;
+
+    populateFeedbackModal(
+        feedback
+    );
+
+    setModalMode(
+        mode
+    );
+
+    document.getElementById(
+        "feedbackModal"
+    ).style.display =
+        "flex";
+
+}
+
+
+function closeFeedbackModal() {
+
+    document.getElementById(
+        "feedbackModal"
+    ).style.display =
+        "none";
+
+}
+
+
+function populateFeedbackModal(
+    feedback
+) {
+
+    document.getElementById(
+        "feedbackTitle"
+    ).value =
+        feedback.title || "";
+
+    document.getElementById(
+        "feedbackContent"
+    ).value =
+        feedback.content || "";
+
+    document.getElementById(
+        "feedbackCreated"
+    ).value =
+        feedback.createdAt || "";
+
+    document.getElementById(
+        "feedbackUpdated"
+    ).value =
+        feedback.lastUpdated || "";
+
+    const attachments =
+        document.getElementById(
+            "feedbackAttachments"
+        );
+
+    if (
+        feedback.attachments &&
+        feedback.attachments.length > 0
+    ) {
+
+        attachments.innerHTML =
+            feedback.attachments
+                .map(
+                    file =>
+                        `<div>📎 ${file}</div>`
+                )
+                .join("");
+
+    }
+
+    else {
+
+        attachments.innerHTML =
+            "No attachments";
+
+    }
+
+}
+
+
+function setModalMode(
+    mode
+) {
+
+    AppState.modalMode =
+        mode;
+
+    const title =
+        document.getElementById(
+            "feedbackTitle"
+        );
+
+    const content =
+        document.getElementById(
+            "feedbackContent"
+        );
+
+    const subtitle =
+        document.getElementById(
+            "modalSubtitle"
+        );
+
+    const closeButton =
+        document.getElementById(
+            "closeBtn"
+        );
+
+    const editButton =
+        document.getElementById(
+            "editBtn"
+        );
+
+    const deleteButton =
+        document.getElementById(
+            "deleteBtn"
+        );
+
+    const downloadButton =
+        document.getElementById(
+            "downloadBtn"
+        );
+
+    const saveButton =
+        document.getElementById(
+            "saveBtn"
+        );
+
+    if (
+        mode === "edit"
+    ) {
+
+        title.readOnly =
+            false;
+
+        content.readOnly =
+            false;
+
+        subtitle.textContent =
+            "Editing Feedback";
+
+        closeButton.textContent =
+            "Cancel";
+
+        editButton.style.display =
+            "none";
+
+        deleteButton.style.display =
+            "none";
+
+        downloadButton.style.display =
+            "none";
+
+        saveButton.style.display =
+            "inline-block";
+
+    }
+
+    else {
+
+        title.readOnly =
+            true;
+
+        content.readOnly =
+            true;
+
+        subtitle.textContent =
+            "Viewing Feedback";
+
+        closeButton.textContent =
+            "Close";
+
+        editButton.style.display =
+            "inline-block";
+
+        deleteButton.style.display =
+            "inline-block";
+
+        downloadButton.style.display =
+            "inline-block";
+
+        saveButton.style.display =
+            "none";
+
+    }
+
+}
+
+
+function switchToEditMode() {
+
+    if (
+        !AppState.selectedFeedback
+    ) {
+
+        return;
+
+    }
+
+    openFeedbackModal(
+
+        AppState.selectedFeedback,
+
+        "edit"
 
     );
+
+}
+
+
+function deleteSelectedFeedback() {
+
+    if (
+        !AppState.selectedFeedback
+    ) {
+
+        return;
+
+    }
+
+    closeFeedbackModal();
+
+    deleteFeedback(
+
+        AppState.selectedFeedback.feedbackId
+
+    );
+
+}
+
+
+function downloadSelectedFeedback() {
+
+    if (
+        !AppState.selectedFeedback
+    ) {
+
+        return;
+
+    }
+
+    downloadFeedback(
+
+        AppState.selectedFeedback.feedbackId
+
+    );
+
+}
+
+
+window.addEventListener(
+
+    "click",
+
+    function (
+        event
+    ) {
+
+        const modal =
+            document.getElementById(
+                "feedbackModal"
+            );
+
+        if (
+            event.target === modal
+        ) {
+
+            closeFeedbackModal();
+
+        }
+
+    }
+
+);
+
+/********************************************************************
+                    SAVE FEEDBACK
+********************************************************************/
+
+async function saveFeedback() {
+
+    const accessToken =
+
+        getAccessToken();
+
+    if (
+
+        !accessToken
+
+    ) {
+
+        alert(
+
+            "Please login."
+
+        );
+
+        return;
+
+    }
+
+    const feedback =
+
+        AppState.selectedFeedback;
+
+    if (
+
+        !feedback
+
+    ) {
+
+        alert(
+
+            "No feedback selected."
+
+        );
+
+        return;
+
+    }
+
+    const title =
+
+        document.getElementById(
+
+            "feedbackTitle"
+
+        ).value;
+
+    const content =
+
+        document.getElementById(
+
+            "feedbackContent"
+
+        ).value;
+
+    try {
+
+        const response =
+
+            await fetch(
+
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
+
+                {
+
+                    method:
+
+                        "PUT",
+
+                    headers: {
+
+                        Authorization:
+
+                            `Bearer ${accessToken}`,
+
+                        "Content-Type":
+
+                            "application/json"
+
+                    },
+
+                    body:
+
+                        JSON.stringify({
+
+                            title,
+
+                            content
+
+                        })
+
+                }
+
+            );
+
+        if (
+
+            !response.ok
+
+        ) {
+
+            throw new Error(
+
+                await response.text()
+
+            );
+
+        }
+
+        const updated =
+
+            await response.json();
+
+        AppState.selectedFeedback =
+
+            updated;
+
+        await loadMyFeedback();
+
+        closeFeedbackModal();
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            error
+
+        );
+
+        alert(
+
+            "Unable to update feedback."
+
+        );
+
+    }
 
 }
 
@@ -1106,8 +1849,11 @@ async function submitFeedback() {
             "message"
         );
 
-    if (!feedbackElement)
+    if (!feedbackElement) {
+
         return;
+
+    }
 
     const feedback =
 
@@ -1205,9 +1951,7 @@ async function submitFeedback() {
 
                         JSON.stringify({
 
-                            feedback:
-
-                                feedback
+                            feedback
 
                         })
 
@@ -1235,11 +1979,7 @@ async function submitFeedback() {
 
     catch (error) {
 
-        console.error(
-
-            error
-
-        );
+        console.error(error);
 
         if (messageElement) {
 
@@ -1255,12 +1995,13 @@ async function submitFeedback() {
 
 
 /********************************************************************
-                    FETCH FEEDBACK
+                    FETCH APIs
 ********************************************************************/
 
 async function fetchMyFeedback() {
 
     const accessToken =
+
         getAccessToken();
 
     if (!accessToken) {
@@ -1270,6 +2011,7 @@ async function fetchMyFeedback() {
         );
 
         return [];
+
     }
 
     try {
@@ -1282,10 +2024,11 @@ async function fetchMyFeedback() {
 
                 {
 
-                    headers:{
+                    headers: {
 
                         Authorization:
-                        `Bearer ${accessToken}`
+
+                            `Bearer ${accessToken}`
 
                     }
 
@@ -1293,10 +2036,12 @@ async function fetchMyFeedback() {
 
             );
 
-        if(!response.ok){
+        if (!response.ok) {
 
             throw new Error(
+
                 "Unable to fetch feedback"
+
             );
 
         }
@@ -1305,7 +2050,7 @@ async function fetchMyFeedback() {
 
     }
 
-    catch(error){
+    catch (error) {
 
         console.error(error);
 
@@ -1315,9 +2060,11 @@ async function fetchMyFeedback() {
 
 }
 
+
 async function fetchAdminFeedback() {
 
     const accessToken =
+
         getAccessToken();
 
     if (!accessToken) {
@@ -1327,6 +2074,7 @@ async function fetchAdminFeedback() {
         );
 
         return [];
+
     }
 
     try {
@@ -1339,10 +2087,11 @@ async function fetchAdminFeedback() {
 
                 {
 
-                    headers:{
+                    headers: {
 
                         Authorization:
-                        `Bearer ${accessToken}`
+
+                            `Bearer ${accessToken}`
 
                     }
 
@@ -1350,10 +2099,12 @@ async function fetchAdminFeedback() {
 
             );
 
-        if(!response.ok){
+        if (!response.ok) {
 
             throw new Error(
+
                 "Unable to fetch feedback"
+
             );
 
         }
@@ -1362,7 +2113,7 @@ async function fetchAdminFeedback() {
 
     }
 
-    catch(error){
+    catch (error) {
 
         console.error(error);
 
@@ -1372,61 +2123,106 @@ async function fetchAdminFeedback() {
 
 }
 
+
 /********************************************************************
-                    FUTURE CRUD
+                LOAD SINGLE FEEDBACK
 ********************************************************************/
 
-async function updateFeedback(
+async function loadSingleFeedback(
 
-    feedbackId,
-
-    payload
+    mode
 
 ) {
 
-    console.log(
+    const accessToken =
 
-        "Future PUT:",
+        getAccessToken();
 
-        feedbackId,
+    if (!accessToken) {
 
-        payload
+        alert(
+            "Please login."
+        );
 
-    );
+        return;
 
-}
+    }
 
+    const feedback =
 
-async function removeFeedback(
+        AppState.selectedFeedback;
 
-    feedbackId
+    if (!feedback) {
 
-) {
+        alert(
+            "Feedback not found."
+        );
 
-    console.log(
+        return;
 
-        "Future DELETE:",
+    }
 
-        feedbackId
+    try {
 
-    );
+        const response =
 
-}
+            await fetch(
 
+                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
 
-async function downloadFeedbackFile(
+                {
 
-    feedbackId
+                    headers: {
 
-) {
+                        Authorization:
 
-    console.log(
+                            `Bearer ${accessToken}`
 
-        "Future DOWNLOAD:",
+                    }
 
-        feedbackId
+                }
 
-    );
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+
+                await response.text()
+
+            );
+
+        }
+
+        const item =
+
+            await response.json();
+
+        AppState.selectedFeedback =
+
+            item;
+
+        openFeedbackModal(
+
+            item,
+
+            mode
+
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+
+            "Unable to retrieve feedback."
+
+        );
+
+    }
 
 }
 
