@@ -3,16 +3,16 @@
 ********************************************************************/
 
 const API_URL =
-    "https://0tsyt0g77j.execute-api.us-east-1.amazonaws.com/prod/feedback";
+    window.APP_CONFIG.API_URL;
 
 const COGNITO_DOMAIN =
-    "https://tarun-feedback-api-001.auth.us-east-1.amazoncognito.com";
+    window.APP_CONFIG.COGNITO_DOMAIN;
 
 const CLIENT_ID =
-    "6lo2tosllipdsnteas7i9j85ao";
+    window.APP_CONFIG.CLIENT_ID;
 
 const REDIRECT_URI =
-    "https://d14npegu4204tc.cloudfront.net/";
+    window.APP_CONFIG.REDIRECT_URI;
 
 
 /********************************************************************
@@ -1455,8 +1455,6 @@ async function downloadFeedback(
         const result =
 
             await response.json();
-
-        console.log(result);
 
         /*
         =========================
@@ -2997,10 +2995,14 @@ async function initializeApplication() {
                     WINDOW LOAD
 ********************************************************************/
 
-window.onload =
+window.addEventListener(
 
-async function () {
+    "load",
 
-    await initializeApplication();
+    async () => {
 
-};
+        await initializeApplication();
+
+    }
+
+);

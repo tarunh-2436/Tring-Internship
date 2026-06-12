@@ -1,3 +1,7 @@
+##############################################
+#      TERRAFORM CONFIGURATION FOR AWS       #
+##############################################
+
 terraform {
   required_providers {
     aws = {
@@ -11,55 +15,13 @@ provider "aws" {
   region = var.aws_region
 }
 
-resource "aws_s3_bucket" "website" {
-  bucket        = var.website_bucket_name
-  force_destroy = true
-}
+##############################################
+#      STORAGE S3 BUCKET CONFIGURATION       #
+##############################################
 
 resource "aws_s3_bucket" "storage" {
   bucket        = var.storage_bucket_name
   force_destroy = true
-}
-
-resource "aws_s3_bucket_public_access_block" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-data "aws_iam_policy_document" "website_bucket_policy" {
-  statement {
-    actions = [
-      "s3:GetObject"
-    ]
-
-    resources = [
-      "${aws_s3_bucket.website.arn}/*"
-    ]
-
-    principals {
-      type = "Service"
-      identifiers = [
-        "cloudfront.amazonaws.com"
-      ]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceArn"
-      values = [
-        "${aws_cloudfront_distribution.this.arn}"
-      ]
-    }
-  }
-}
-
-resource "aws_s3_bucket_policy" "website_bucket_policy" {
-  bucket = aws_s3_bucket.website.id
-  policy = data.aws_iam_policy_document.website_bucket_policy.json
 }
 
 resource "aws_s3_bucket_public_access_block" "storage" {
@@ -125,6 +87,73 @@ resource "aws_s3_bucket_cors_configuration" "storage" {
 
 }
 
+##############################################
+#           DYNAMODB CONFIGURATION           #
+##############################################
+
+module "dynamodb" {
+  source     = "../modules/dynamodb"
+  table_name = var.dynamodb_table_name
+  hash_key   = "ownerId"
+  range_key  = "feedbackId"
+}
+
+##############################################
+#      WEBSITE S3 BUCKET CONFIGURATION       #
+##############################################
+
+resource "aws_s3_bucket" "website" {
+  bucket        = var.website_bucket_name
+  force_destroy = true
+}
+
+
+
+resource "aws_s3_bucket_public_access_block" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+data "aws_iam_policy_document" "website_bucket_policy" {
+  statement {
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.website.arn}/*"
+    ]
+
+    principals {
+      type = "Service"
+      identifiers = [
+        "cloudfront.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values = [
+        "${aws_cloudfront_distribution.this.arn}"
+      ]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "website_bucket_policy" {
+  bucket = aws_s3_bucket.website.id
+  policy = data.aws_iam_policy_document.website_bucket_policy.json
+}
+
+##############################################
+#   CLOUDFRONT DISTRIBUTION CONFIGURATION    #
+##############################################
+
 resource "aws_cloudfront_origin_access_control" "this" {
   name                              = "website-oac"
   description                       = "OAC for private S3 bucket"
@@ -177,6 +206,10 @@ resource "aws_cloudfront_distribution" "this" {
     cloudfront_default_certificate = true
   }
 }
+
+##############################################
+#            LAMBDA CONFIGURATION            #
+##############################################
 
 resource "aws_iam_role" "lambda_execution" {
   name = "lambda_execution_role"
@@ -294,6 +327,10 @@ resource "aws_lambda_permission" "apigw_lambda" {
   source_arn = "${aws_apigatewayv2_api.feedback_api.execution_arn}/*/*"
 }
 
+##############################################
+#         API GATEWAY CONFIGURATION          #
+##############################################
+
 resource "aws_apigatewayv2_api" "feedback_api" {
   name          = "feedback-api"
   protocol_type = "HTTP"
@@ -304,6 +341,46 @@ resource "aws_apigatewayv2_api" "feedback_api" {
     allow_origins = ["*"]
   }
 }
+
+resource "aws_apigatewayv2_integration" "lambda_integration" {
+  api_id           = aws_apigatewayv2_api.feedback_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.feedback_api.invoke_arn
+
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_authorizer" "cognito" {
+
+  api_id = aws_apigatewayv2_api.feedback_api.id
+
+  authorizer_type = "JWT"
+
+  identity_sources = [
+    "$request.header.Authorization"
+  ]
+
+  name = "cognito-authorizer"
+
+  jwt_configuration {
+
+    audience = [
+      aws_cognito_user_pool_client.web_client.id
+    ]
+
+    issuer = "https://cognito-idp.us-east-1.amazonaws.com/${aws_cognito_user_pool.feedback_users.id}"
+  }
+}
+
+resource "aws_apigatewayv2_stage" "prod" {
+  api_id      = aws_apigatewayv2_api.feedback_api.id
+  name        = "prod"
+  auto_deploy = true
+}
+
+##############################################
+#          API ROUTES CONFIGURATION          #
+##############################################
 
 resource "aws_apigatewayv2_route" "get_feedback_route" {
 
@@ -440,41 +517,9 @@ resource "aws_apigatewayv2_route" "delete_feedback_route" {
   authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
-resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id           = aws_apigatewayv2_api.feedback_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.feedback_api.invoke_arn
-
-  payload_format_version = "2.0"
-}
-
-resource "aws_apigatewayv2_authorizer" "cognito" {
-
-  api_id = aws_apigatewayv2_api.feedback_api.id
-
-  authorizer_type = "JWT"
-
-  identity_sources = [
-    "$request.header.Authorization"
-  ]
-
-  name = "cognito-authorizer"
-
-  jwt_configuration {
-
-    audience = [
-      aws_cognito_user_pool_client.web_client.id
-    ]
-
-    issuer = "https://cognito-idp.us-east-1.amazonaws.com/${aws_cognito_user_pool.feedback_users.id}"
-  }
-}
-
-resource "aws_apigatewayv2_stage" "prod" {
-  api_id      = aws_apigatewayv2_api.feedback_api.id
-  name        = "prod"
-  auto_deploy = true
-}
+##############################################
+#           COGNITO CONFIGURATION            #
+##############################################
 
 resource "aws_cognito_user_pool" "feedback_users" {
   name = "feedback-users"
@@ -541,9 +586,80 @@ resource "aws_cognito_user_group" "admins" {
   user_pool_id = aws_cognito_user_pool.feedback_users.id
 }
 
-module "dynamodb" {
-  source     = "../modules/dynamodb"
-  table_name = var.dynamodb_table_name
-  hash_key   = "ownerId"
-  range_key  = "feedbackId"
+##############################################
+#            WEBSITE FILES UPLOAD            #
+##############################################
+
+resource "aws_s3_object" "config_js" {
+
+  bucket = aws_s3_bucket.website.id
+
+  key = "config.js"
+
+  content = templatefile(
+
+    "${path.module}/../website/config.js.tpl",
+
+    {
+
+      api_url = "${aws_apigatewayv2_stage.prod.invoke_url}/feedback"
+
+      cognito_domain = "https://${aws_cognito_user_pool_domain.feedback_domain.domain}.auth.${var.aws_region}.amazoncognito.com"
+
+      client_id = aws_cognito_user_pool_client.web_client.id
+
+      redirect_uri = "https://${aws_cloudfront_distribution.this.domain_name}/"
+
+    }
+
+  )
+
+  content_type = "application/javascript"
+
+}
+
+locals {
+
+  website_files = setsubtract(
+
+    fileset(
+      "${path.module}/../website",
+      "*"
+    ),
+
+    [
+      "config.js.tpl"
+    ]
+
+  )
+
+}
+
+resource "aws_s3_object" "website" {
+
+  for_each = local.website_files
+
+  bucket = aws_s3_bucket.website.id
+
+  key = each.value
+
+  source = "${path.module}/../website/${each.value}"
+
+  etag = filemd5(
+    "${path.module}/../website/${each.value}"
+  )
+
+  content_type = lookup(
+    {
+      html = "text/html"
+      css  = "text/css"
+      js   = "application/javascript"
+    },
+    element(
+      split(".", each.value),
+      length(split(".", each.value)) - 1
+    ),
+    "binary/octet-stream"
+  )
+
 }

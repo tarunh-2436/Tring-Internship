@@ -9,6 +9,7 @@ from helpers.uploads import (
     verify_feedback_uploads,
     delete_feedback_uploads,
     delete_selected_uploads,
+    build_s3_key,
 )
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
@@ -22,6 +23,68 @@ s3 = boto3.client("s3")
 AUTHENTICATED = "AUTHENTICATED"
 ANONYMOUS = "ANONYMOUS"
 ENTITY_TYPE = "FEEDBACK"
+
+
+def get_body(event):
+
+    body = event["body"]
+
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    return body
+
+
+def current_timestamp():
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def generate_upload_response(
+    owner_id, attachments, feedback_id=None, include_owner=False
+):
+
+    if not feedback_id:
+        feedback_id = str(uuid.uuid4())
+
+    uploads = []
+
+    for attachment in attachments:
+
+        filename = attachment["filename"]
+        content_type = attachment["contentType"]
+        key = build_s3_key(owner_id, feedback_id, filename)
+
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": BUCKET_NAME,
+                "Key": key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=900,
+        )
+
+        uploads.append(
+            {
+                "filename": filename,
+                "uploadUrl": upload_url,
+                "contentType": content_type,
+            }
+        )
+
+    response_body = {
+        "feedbackId": feedback_id,
+        "uploads": uploads,
+    }
+
+    if include_owner:
+        response_body["ownerId"] = owner_id
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(response_body),
+    }
 
 
 def lambda_handler(event, context):
@@ -88,59 +151,9 @@ def lambda_handler(event, context):
     return {"statusCode": 405, "body": json.dumps({"message": "Method not allowed"})}
 
 
-def generate_upload_response(
-    owner_id, attachments, feedback_id=None, include_owner=False
-):
-
-    if not feedback_id:
-        feedback_id = str(uuid.uuid4())
-
-    uploads = []
-
-    for attachment in attachments:
-
-        filename = attachment["filename"]
-        content_type = attachment["contentType"]
-        key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
-
-        upload_url = s3.generate_presigned_url(
-            "put_object",
-            Params={
-                "Bucket": BUCKET_NAME,
-                "Key": key,
-                "ContentType": content_type,
-            },
-            ExpiresIn=900,
-        )
-
-        uploads.append(
-            {
-                "filename": filename,
-                "uploadUrl": upload_url,
-                "contentType": content_type,
-            }
-        )
-
-    response_body = {
-        "feedbackId": feedback_id,
-        "uploads": uploads,
-    }
-
-    if include_owner:
-        response_body["ownerId"] = owner_id
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response_body),
-    }
-
-
 def initiate_feedback(event):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     owner_info = get_owner_information(event)
 
@@ -159,10 +172,7 @@ def initiate_feedback(event):
 
 def complete_feedback(event):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     owner_info = get_owner_information(event)
 
@@ -190,7 +200,7 @@ def complete_feedback(event):
             "body": json.dumps({"message": "Invalid Request"}),
         }
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = current_timestamp()
 
     try:
 
@@ -257,10 +267,7 @@ def complete_feedback(event):
 
 def initiate_anonymous_feedback(event):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     anonymous_owner = str(uuid.uuid4())
 
@@ -273,10 +280,7 @@ def initiate_anonymous_feedback(event):
 
 def complete_anonymous_feedback(event):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     owner_id = body.get("ownerId")
 
@@ -295,7 +299,7 @@ def complete_anonymous_feedback(event):
             "body": json.dumps({"message": "Invalid Request"}),
         }
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = current_timestamp()
 
     try:
 
@@ -472,10 +476,7 @@ def get_single_feedback(event, parts):
 
 def initiate_edit_feedback(event, parts):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     owner_id = parts[1]
 
@@ -528,10 +529,7 @@ def initiate_edit_feedback(event, parts):
 
 def complete_edit_feedback(event, parts):
 
-    body = event["body"]
-
-    if isinstance(body, str):
-        body = json.loads(body)
+    body = get_body(event)
 
     owner_id = parts[1]
 
@@ -783,7 +781,7 @@ def download_feedback(event, parts):
 
             content_type = attachment.get("contentType")
 
-            key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
+            key = build_s3_key(owner_id, feedback_id, filename)
 
             download_url = s3.generate_presigned_url(
                 "get_object",

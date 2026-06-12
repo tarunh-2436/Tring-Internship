@@ -58,3 +58,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ==========================================
+# Frontend Config Files
+# ==========================================
+
+website/config.js

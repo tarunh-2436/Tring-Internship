@@ -6,8 +6,6 @@ s3 = boto3.client("s3")
 
 BUCKET_NAME = os.environ["STORAGE_BUCKET"]
 
-STORAGE_BUCKET = os.environ["STORAGE_BUCKET"]
-
 
 def verify_feedback_uploads(owner_id, feedback_id, attachments):
 
@@ -17,7 +15,7 @@ def verify_feedback_uploads(owner_id, feedback_id, attachments):
 
             filename = attachment["filename"]
 
-            key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
+            key = build_s3_key(owner_id, feedback_id, filename)
 
             s3.head_object(
                 Bucket=BUCKET_NAME,
@@ -68,7 +66,7 @@ def delete_selected_uploads(
 
             filename = attachment["filename"]
 
-            key = f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
+            key = build_s3_key(owner_id, feedback_id, filename)
 
             objects.append({"Key": key})
 
@@ -84,3 +82,12 @@ def delete_selected_uploads(
     except Exception as e:
 
         print(str(e))
+
+
+def build_s3_key(
+    owner_id,
+    feedback_id,
+    filename,
+):
+
+    return f"uploads/" f"{owner_id}/" f"{feedback_id}/" f"{filename}"
