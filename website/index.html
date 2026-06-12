@@ -1,600 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
 
-<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <meta charset="UTF-8">
+    <title>Feedback Management Portal</title>
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-    <title>
-
-        Feedback Management Portal
-
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="styles.css">
-
-</head>
-
-<body>
-
-<div class="app">
-
-    <!-- ===========================
+  <body>
+    <div class="app">
+      <!-- ===========================
                 HEADER
     ============================ -->
 
-    <header class="topbar">
-
+      <header class="topbar">
         <div class="logo">
-
-            <h1>
-
-                Feedback Portal
-
-            </h1>
-
+          <h1>Feedback Portal</h1>
         </div>
 
         <div class="topbar-right">
+          <div id="user-status" class="user-status">Browsing as Guest</div>
 
-            <div
-                id="user-status"
-                class="user-status">
+          <button onclick="login()">Login</button>
 
-                Browsing as Guest
+          <button onclick="signup()">Sign Up</button>
 
-            </div>
-
-            <button onclick="login()">
-
-                Login
-
-            </button>
-
-            <button onclick="signup()">
-
-                Sign Up
-
-            </button>
-
-            <button onclick="logout()">
-
-                Logout
-
-            </button>
-
+          <button onclick="logout()">Logout</button>
         </div>
+      </header>
 
-    </header>
-
-
-    <!-- ===========================
+      <!-- ===========================
                 BODY
     ============================ -->
 
-    <div class="body-container">
-
+      <div class="body-container">
         <!-- =======================
                     SIDEBAR
         ======================== -->
 
         <aside class="sidebar">
+          <button id="nav-home">🏠 Home</button>
 
-            <button id="nav-home">
+          <button id="nav-submit">📝 Submit Feedback</button>
 
-                🏠 Home
+          <button id="nav-my-feedback">📂 My Feedback</button>
 
-            </button>
-
-            <button id="nav-submit">
-
-                📝 Submit Feedback
-
-            </button>
-
-            <button id="nav-my-feedback">
-
-                📂 My Feedback
-
-            </button>
-
-            <button
-                id="admin-export"
-                style="display:none;">
-
-                🛡 Admin Dashboard
-
-            </button>
-
+          <button id="admin-export" style="display: none">
+            🛡 Admin Dashboard
+          </button>
         </aside>
-
 
         <!-- =======================
                 CONTENT
         ======================== -->
 
-        <main
-            id="content">
-
-        </main>
-
+        <main id="content"></main>
+      </div>
     </div>
 
-</div>
-
-
-
-<!-- =====================================================
+    <!-- =====================================================
                         HOME TEMPLATE
 ====================================================== -->
 
-<template id="home-template">
+    <template id="home-template">
+      <section class="page">
+        <h2>Home</h2>
 
-<section class="page">
+        <p>Welcome to the Feedback Management Portal.</p>
 
-    <h2>
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>Submit Feedback</h3>
 
-        Home
+            <p>Create a new feedback submission.</p>
 
-    </h2>
+            <button onclick="navigate('submit')">Open</button>
+          </div>
 
-    <p>
+          <div class="dashboard-card">
+            <h3>My Feedback</h3>
 
-        Welcome to the Feedback Management Portal.
+            <p>View your submitted feedback.</p>
 
-    </p>
+            <button onclick="navigate('my-feedback')">Open</button>
+          </div>
 
-    <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>Admin Dashboard</h3>
 
-        <div class="dashboard-card">
+            <p>Administrator tools and downloads.</p>
 
-            <h3>
-
-                Submit Feedback
-
-            </h3>
-
-            <p>
-
-                Create a new feedback submission.
-
-            </p>
-
-            <button
-                onclick="navigate('submit')">
-
-                Open
-
-            </button>
-
+            <button onclick="navigate('admin')">Open</button>
+          </div>
         </div>
+      </section>
+    </template>
 
-        <div class="dashboard-card">
-
-            <h3>
-
-                My Feedback
-
-            </h3>
-
-            <p>
-
-                View your submitted feedback.
-
-            </p>
-
-            <button
-                onclick="navigate('my-feedback')">
-
-                Open
-
-            </button>
-
-        </div>
-
-        <div class="dashboard-card">
-
-            <h3>
-
-                Admin Dashboard
-
-            </h3>
-
-            <p>
-
-                Administrator tools and downloads.
-
-            </p>
-
-            <button
-                onclick="navigate('admin')">
-
-                Open
-
-            </button>
-
-        </div>
-
-    </div>
-
-</section>
-
-</template>
-
-
-
-<!-- =====================================================
+    <!-- =====================================================
                     SUBMIT TEMPLATE
 ====================================================== -->
 
-<template id="submit-template">
+    <template id="submit-template">
+      <section class="page">
+        <h2>Submit Feedback</h2>
 
-<section class="page">
+        <div class="form-group">
+          <label> Title </label>
 
-    <h2>
-
-        Submit Feedback
-
-    </h2>
-
-    <div class="form-group">
-
-        <label>
-
-            Title
-
-        </label>
-
-        <input
-
+          <input
             id="feedback-title"
-
             type="text"
+            placeholder="Enter feedback title"
+          />
+        </div>
 
-            placeholder="Enter feedback title">
+        <div class="form-group">
+          <label> Content </label>
 
-    </div>
-
-    <div class="form-group">
-
-        <label>
-
-            Content
-
-        </label>
-
-        <textarea
-
+          <textarea
             id="feedback"
-
             rows="10"
+            placeholder="Enter your feedback"
+          ></textarea>
+        </div>
 
-            placeholder="Enter your feedback"></textarea>
+        <div class="form-group">
+          <label> Attachments </label>
 
-    </div>
+          <input id="feedback-files" type="file" multiple />
+        </div>
 
-    <div class="form-group">
+        <div id="selected-attachments" class="attachments-preview">
+          No attachments selected
+        </div>
 
-        <label>
-
-            Attachments
-
-        </label>
-
-        <input
-
-            id="feedback-files"
-
-            type="file"
-
-            multiple>
-
-    </div>
-
-    <div
-
-        id="selected-attachments"
-
-        class="attachments-preview">
-
-        No attachments selected
-
-    </div>
-
-    <div class="form-group">
-
-        <label>
-
-            <input
-
-                id="anonymous"
-
-                type="checkbox">
+        <div class="form-group">
+          <label>
+            <input id="anonymous" type="checkbox" />
 
             Submit anonymously
+          </label>
+        </div>
 
-        </label>
+        <button onclick="submitFeedback()">Submit Feedback</button>
 
-    </div>
+        <div id="message" class="message"></div>
+      </section>
+    </template>
 
-    <button
-
-        onclick="submitFeedback()">
-
-        Submit Feedback
-
-    </button>
-
-    <div
-
-        id="message"
-
-        class="message">
-
-    </div>
-
-</section>
-
-</template>
-
-<!-- =====================================================
+    <!-- =====================================================
                 MY FEEDBACK TEMPLATE
 ====================================================== -->
 
-<template id="my-feedback-template">
+    <template id="my-feedback-template">
+      <section class="page">
+        <div class="page-header">
+          <h2>My Feedback</h2>
 
-<section class="page">
+          <button onclick="loadMyFeedback()">Refresh</button>
+        </div>
 
-    <div class="page-header">
+        <div id="feedback-preview" class="feedback-list"></div>
+      </section>
+    </template>
 
-        <h2>
-
-            My Feedback
-
-        </h2>
-
-        <button
-            onclick="loadMyFeedback()">
-
-            Refresh
-
-        </button>
-
-    </div>
-
-    <div
-
-        id="feedback-preview"
-
-        class="feedback-list">
-
-    </div>
-
-</section>
-
-</template>
-
-
-
-<!-- =====================================================
+    <!-- =====================================================
                 ADMIN TEMPLATE
 ====================================================== -->
 
-<template id="admin-template">
+    <template id="admin-template">
+      <section class="page">
+        <div class="page-header">
+          <h2>Admin Dashboard</h2>
 
-<section class="page">
+          <button onclick="loadAdminFeedback()">Refresh</button>
+        </div>
 
-    <div class="page-header">
+        <div class="admin-toolbar">
+          <input id="search" type="text" placeholder="Search feedback" />
 
-        <h2>
+          <select id="sort-order">
+            <option value="latest">Latest</option>
 
-            Admin Dashboard
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
 
-        </h2>
+        <div id="feedback-preview" class="feedback-list"></div>
+      </section>
+    </template>
 
-        <button
-            onclick="loadAdminFeedback()">
-
-            Refresh
-
-        </button>
-
-    </div>
-
-    <div class="admin-toolbar">
-
-        <input
-
-            id="search"
-
-            type="text"
-
-            placeholder="Search feedback">
-
-        <select id="sort-order">
-
-            <option value="latest">
-
-                Latest
-
-            </option>
-
-            <option value="oldest">
-
-                Oldest
-
-            </option>
-
-        </select>
-
-    </div>
-
-    <div
-
-        id="feedback-preview"
-
-        class="feedback-list">
-
-    </div>
-
-</section>
-
-</template>
-
-<!-- =====================================================
+    <!-- =====================================================
                     FEEDBACK MODAL
 ====================================================== -->
 
-<div
-    id="feedbackModal"
-    class="modal">
+    <div id="feedbackModal" class="modal">
+      <div class="modal-content">
+        <h2 id="modalTitle">Feedback Details</h2>
 
-    <div class="modal-content">
+        <p id="modalSubtitle"></p>
 
-        <h2 id="modalTitle">
+        <label> Title </label>
 
-            Feedback Details
+        <input id="feedbackTitle" type="text" />
 
-        </h2>
+        <label> Content </label>
 
-        <p id="modalSubtitle">
+        <textarea id="feedbackContent" rows="10"> </textarea>
 
-        </p>
+        <label> Created At </label>
 
-        <label>
+        <input id="feedbackCreated" type="text" readonly />
 
-            Title
+        <label> Last Updated </label>
 
-        </label>
+        <input id="feedbackUpdated" type="text" readonly />
 
-        <input
-            id="feedbackTitle"
-            type="text">
+        <label> Attachments </label>
 
-        <label>
+        <div id="feedbackAttachments" class="attachments-container"></div>
 
-            Content
-
-        </label>
-
-        <textarea
-            id="feedbackContent"
-            rows="10">
-
-        </textarea>
-
-        <label>
-
-            Created At
-
-        </label>
-
-        <input
-            id="feedbackCreated"
-            type="text"
-            readonly>
-
-        <label>
-
-            Last Updated
-
-        </label>
-
-        <input
-            id="feedbackUpdated"
-            type="text"
-            readonly>
-
-        <label>
-
-            Attachments
-
-        </label>
-
-        <div
-
-            id="feedbackAttachments"
-
-            class="attachments-container">
-
-        </div>
-
-        <div
-
-            id="modalUploadSection"
-
-            class="modal-upload"
-
-            style="display:none;">
-
-            <input
-
-                id="modalAttachmentInput"
-
-                type="file"
-
-                multiple>
-
+        <div id="modalUploadSection" class="modal-upload" style="display: none">
+          <input id="modalAttachmentInput" type="file" multiple />
         </div>
 
         <div class="modal-footer">
+          <button id="closeBtn" onclick="closeFeedbackModal()">Close</button>
 
-            <button
-                id="closeBtn"
-                onclick="closeFeedbackModal()">
+          <button id="editBtn" onclick="switchToEditMode()">Edit</button>
 
-                Close
+          <button id="deleteBtn" onclick="deleteSelectedFeedback()">
+            Delete
+          </button>
 
-            </button>
+          <button id="downloadBtn" onclick="downloadSelectedFeedback()">
+            Download
+          </button>
 
-            <button
-                id="editBtn"
-                onclick="switchToEditMode()">
-
-                Edit
-
-            </button>
-
-            <button
-                id="deleteBtn"
-                onclick="deleteSelectedFeedback()">
-
-                Delete
-
-            </button>
-
-            <button
-                id="downloadBtn"
-                onclick="downloadSelectedFeedback()">
-
-                Download
-
-            </button>
-
-            <button
-                id="saveBtn"
-                onclick="saveFeedback()">
-
-                Save
-
-            </button>
-
+          <button id="saveBtn" onclick="saveFeedback()">Save</button>
         </div>
-
+      </div>
     </div>
 
-</div>
+    <script src="config.js"></script>
 
-<script src="config.js"></script>
-
-<script src="scripts.js"></script>
-
-</body>
-
+    <script src="scripts.js"></script>
+  </body>
 </html>

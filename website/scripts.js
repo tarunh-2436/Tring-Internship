@@ -2,223 +2,123 @@
                         CONFIGURATION
 ********************************************************************/
 
-const API_URL =
-    window.APP_CONFIG.API_URL;
+const API_URL = window.APP_CONFIG.API_URL;
 
-const COGNITO_DOMAIN =
-    window.APP_CONFIG.COGNITO_DOMAIN;
+const COGNITO_DOMAIN = window.APP_CONFIG.COGNITO_DOMAIN;
 
-const CLIENT_ID =
-    window.APP_CONFIG.CLIENT_ID;
+const CLIENT_ID = window.APP_CONFIG.CLIENT_ID;
 
-const REDIRECT_URI =
-    window.APP_CONFIG.REDIRECT_URI;
-
+const REDIRECT_URI = window.APP_CONFIG.REDIRECT_URI;
 
 /********************************************************************
                         APPLICATION STATE
 ********************************************************************/
 
 const AppState = {
+  currentPage: "home",
 
-    currentPage: "home",
+  currentUser: null,
 
-    currentUser: null,
+  currentRole: "guest",
 
-    currentRole: "guest",
+  feedbacks: [],
 
-    feedbacks: [],
+  selectedFeedback: null,
 
-    selectedFeedback: null,
+  modalMode: "view",
 
-    modalMode: "view",
+  newAttachments: [],
 
-    newAttachments: [],
-
-    deletedAttachments: []
-
+  deletedAttachments: [],
 };
-
 
 /********************************************************************
                         AUTHENTICATION
 ********************************************************************/
 
 function login() {
+  const loginUrl =
+    `${COGNITO_DOMAIN}/login` +
+    `?client_id=${CLIENT_ID}` +
+    `&response_type=code` +
+    `&scope=openid+email+profile` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    const loginUrl =
-
-        `${COGNITO_DOMAIN}/login`
-
-        + `?client_id=${CLIENT_ID}`
-
-        + `&response_type=code`
-
-        + `&scope=openid+email+profile`
-
-        + `&redirect_uri=${encodeURIComponent(
-            REDIRECT_URI
-        )}`;
-
-    window.location.href =
-        loginUrl;
-
+  window.location.href = loginUrl;
 }
-
 
 function signup() {
+  const signupUrl =
+    `${COGNITO_DOMAIN}/signup` +
+    `?client_id=${CLIENT_ID}` +
+    `&response_type=code` +
+    `&scope=openid+email+profile` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    const signupUrl =
-
-        `${COGNITO_DOMAIN}/signup`
-
-        + `?client_id=${CLIENT_ID}`
-
-        + `&response_type=code`
-
-        + `&scope=openid+email+profile`
-
-        + `&redirect_uri=${encodeURIComponent(
-            REDIRECT_URI
-        )}`;
-
-    window.location.href =
-        signupUrl;
-
+  window.location.href = signupUrl;
 }
-
 
 function logout() {
+  localStorage.removeItem("id_token");
 
-    localStorage.removeItem(
-        "id_token"
-    );
+  localStorage.removeItem("access_token");
 
-    localStorage.removeItem(
-        "access_token"
-    );
+  localStorage.removeItem("refresh_token");
 
-    localStorage.removeItem(
-        "refresh_token"
-    );
+  const logoutUrl =
+    `${COGNITO_DOMAIN}/logout` +
+    `?client_id=${CLIENT_ID}` +
+    `&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-    const logoutUrl =
-
-        `${COGNITO_DOMAIN}/logout`
-
-        + `?client_id=${CLIENT_ID}`
-
-        + `&logout_uri=${encodeURIComponent(
-            REDIRECT_URI
-        )}`;
-
-    window.location.href =
-        logoutUrl;
-
+  window.location.href = logoutUrl;
 }
-
 
 /********************************************************************
                         JWT HELPERS
 ********************************************************************/
 
 function parseJwt(token) {
-
-    return JSON.parse(
-
-        atob(
-
-            token.split(".")[1]
-
-        )
-
-    );
-
+  return JSON.parse(atob(token.split(".")[1]));
 }
-
 
 function getCurrentUser() {
+  const token = localStorage.getItem("id_token");
 
-    const token =
+  if (!token) {
+    return null;
+  }
 
-        localStorage.getItem(
-            "id_token"
-        );
+  try {
+    return parseJwt(token);
+  } catch (error) {
+    console.error(error);
 
-    if (!token) {
-
-        return null;
-
-    }
-
-    try {
-
-        return parseJwt(
-            token
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        return null;
-
-    }
-
+    return null;
+  }
 }
-
 
 function getAccessToken() {
-
-    return localStorage.getItem(
-        "access_token"
-    );
-
+  return localStorage.getItem("access_token");
 }
-
 
 function getRefreshToken() {
-
-    return localStorage.getItem(
-        "refresh_token"
-    );
-
+  return localStorage.getItem("refresh_token");
 }
 
-
 function getUserRole() {
+  const user = getCurrentUser();
 
-    const user =
-        getCurrentUser();
+  if (!user) {
+    return "guest";
+  }
 
-    if (!user) {
+  const groups = user["cognito:groups"] || [];
 
-        return "guest";
+  if (groups.includes("admins")) {
+    return "admin";
+  }
 
-    }
-
-    const groups =
-
-        user[
-            "cognito:groups"
-        ] || [];
-
-    if (
-
-        groups.includes(
-            "admins"
-        )
-
-    ) {
-
-        return "admin";
-
-    }
-
-    return "user";
-
+  return "user";
 }
 
 /********************************************************************
@@ -226,577 +126,263 @@ function getUserRole() {
 ********************************************************************/
 
 async function handleAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
 
-    const params =
+  const code = params.get("code");
 
-        new URLSearchParams(
+  if (!code) {
+    return;
+  }
 
-            window.location.search
+  try {
+    const response = await fetch(
+      `${COGNITO_DOMAIN}/oauth2/token`,
 
-        );
+      {
+        method: "POST",
 
-    const code =
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
 
-        params.get(
-            "code"
-        );
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
 
-    if (!code) {
+          client_id: CLIENT_ID,
 
-        return;
+          code: code,
 
+          redirect_uri: REDIRECT_URI,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to exchange authorization code.");
     }
 
-    try {
+    const tokens = await response.json();
 
-        const response =
+    localStorage.setItem(
+      "id_token",
 
-            await fetch(
+      tokens.id_token,
+    );
 
-                `${COGNITO_DOMAIN}/oauth2/token`,
+    localStorage.setItem(
+      "access_token",
 
-                {
+      tokens.access_token,
+    );
 
-                    method:
-                        "POST",
+    localStorage.setItem(
+      "refresh_token",
 
-                    headers: {
+      tokens.refresh_token,
+    );
 
-                        "Content-Type":
+    window.history.replaceState(
+      {},
 
-                            "application/x-www-form-urlencoded"
+      document.title,
 
-                    },
-
-                    body:
-
-                        new URLSearchParams({
-
-                            grant_type:
-
-                                "authorization_code",
-
-                            client_id:
-
-                                CLIENT_ID,
-
-                            code:
-
-                                code,
-
-                            redirect_uri:
-
-                                REDIRECT_URI
-
-                        })
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to exchange authorization code."
-            );
-
-        }
-
-        const tokens =
-            await response.json();
-
-        localStorage.setItem(
-
-            "id_token",
-
-            tokens.id_token
-
-        );
-
-        localStorage.setItem(
-
-            "access_token",
-
-            tokens.access_token
-
-        );
-
-        localStorage.setItem(
-
-            "refresh_token",
-
-            tokens.refresh_token
-
-        );
-
-        window.history.replaceState(
-
-            {},
-
-            document.title,
-
-            "/"
-
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-    }
-
+      "/",
+    );
+  } catch (error) {
+    console.error(error);
+  }
 }
-
 
 /********************************************************************
                         USER STATUS
 ********************************************************************/
 
 function updateUserStatus() {
+  const statusElement = document.getElementById("user-status");
 
-    const statusElement =
+  if (!statusElement) {
+    return;
+  }
 
-        document.getElementById(
+  const user = getCurrentUser();
 
-            "user-status"
+  if (!user) {
+    AppState.currentUser = null;
 
-        );
+    AppState.currentRole = "guest";
 
-    if (!statusElement) {
+    statusElement.innerHTML = "Browsing as Guest";
+  } else {
+    AppState.currentUser = user;
 
-        return;
+    AppState.currentRole = getUserRole();
 
-    }
-
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-
-        AppState.currentUser =
-            null;
-
-        AppState.currentRole =
-            "guest";
-
-        statusElement.innerHTML =
-
-            "Browsing as Guest";
-
-    }
-
-    else {
-
-        AppState.currentUser =
-            user;
-
-        AppState.currentRole =
-            getUserRole();
-
-        statusElement.innerHTML =
-
-            `Logged in as
+    statusElement.innerHTML = `Logged in as
 
             ${user.email}
 
             (${AppState.currentRole})`;
+  }
 
-    }
-
-    toggleRoleBasedUI();
-
+  toggleRoleBasedUI();
 }
-
 
 /********************************************************************
                     ROLE BASED UI
 ********************************************************************/
 
 function toggleRoleBasedUI() {
+  const adminButton = document.getElementById("admin-export");
 
-    const adminButton =
+  if (!adminButton) {
+    return;
+  }
 
-        document.getElementById(
-
-            "admin-export"
-
-        );
-
-    if (!adminButton) {
-
-        return;
-
-    }
-
-    adminButton.style.display =
-
-        AppState.currentRole ===
-        "admin"
-
-        ?
-
-        "block"
-
-        :
-
-        "none";
-
+  adminButton.style.display =
+    AppState.currentRole === "admin" ? "block" : "none";
 }
 
 /********************************************************************
                     NAVIGATION
 ********************************************************************/
 
-function renderTemplate(
+function renderTemplate(templateId) {
+  const content = document.getElementById("content");
 
-    templateId
+  if (!content) {
+    return;
+  }
 
-) {
+  const template = document.getElementById(templateId);
 
-    const content =
+  if (!template) {
+    console.error(`Template not found: ${templateId}`);
 
-        document.getElementById(
+    return;
+  }
 
-            "content"
+  content.innerHTML = "";
 
-        );
-
-    if (!content) {
-
-        return;
-
-    }
-
-    const template =
-
-        document.getElementById(
-
-            templateId
-
-        );
-
-    if (!template) {
-
-        console.error(
-
-            `Template not found: ${templateId}`
-
-        );
-
-        return;
-
-    }
-
-    content.innerHTML =
-
-        "";
-
-    content.appendChild(
-
-        template.content.cloneNode(
-
-            true
-
-        )
-
-    );
-
+  content.appendChild(template.content.cloneNode(true));
 }
 
+function navigate(page) {
+  AppState.currentPage = page;
 
-function navigate(
+  switch (page) {
+    case "home":
+      showHome();
 
-    page
+      break;
 
-) {
+    case "submit":
+      showSubmit();
 
-    AppState.currentPage =
-        page;
+      break;
 
-    switch (page) {
+    case "my-feedback":
+      showMyFeedback();
 
-        case "home":
+      break;
 
-            showHome();
+    case "admin":
+      showAdminDashboard();
 
-            break;
+      break;
 
-        case "submit":
-
-            showSubmit();
-
-            break;
-
-        case "my-feedback":
-
-            showMyFeedback();
-
-            break;
-
-        case "admin":
-
-            showAdminDashboard();
-
-            break;
-
-        default:
-
-            showHome();
-
-    }
-
+    default:
+      showHome();
+  }
 }
-
 
 function initializeNavigation() {
+  document.getElementById("nav-home").onclick = () => navigate("home");
 
-    document
+  document.getElementById("nav-submit").onclick = () => navigate("submit");
 
-        .getElementById(
+  document.getElementById("nav-my-feedback").onclick = () =>
+    navigate("my-feedback");
 
-            "nav-home"
+  const adminButton = document.getElementById("admin-export");
 
-        )
-
-        .onclick =
-
-        () =>
-
-        navigate(
-
-            "home"
-
-        );
-
-    document
-
-        .getElementById(
-
-            "nav-submit"
-
-        )
-
-        .onclick =
-
-        () =>
-
-        navigate(
-
-            "submit"
-
-        );
-
-    document
-
-        .getElementById(
-
-            "nav-my-feedback"
-
-        )
-
-        .onclick =
-
-        () =>
-
-        navigate(
-
-            "my-feedback"
-
-        );
-
-    const adminButton =
-
-        document.getElementById(
-
-            "admin-export"
-
-        );
-
-    if (adminButton) {
-
-        adminButton.onclick =
-
-            () =>
-
-            navigate(
-
-                "admin"
-
-            );
-
-    }
-
+  if (adminButton) {
+    adminButton.onclick = () => navigate("admin");
+  }
 }
-
 
 /********************************************************************
                     PAGE RENDERING
 ********************************************************************/
 
 function showHome() {
-
-    renderTemplate(
-
-        "home-template"
-
-    );
-
+  renderTemplate("home-template");
 }
-
 
 function showSubmit() {
+  renderTemplate("submit-template");
 
-    renderTemplate(
+  const fileInput = document.getElementById("feedback-files");
 
-        "submit-template"
+  if (!fileInput) {
+    return;
+  }
 
-    );
+  fileInput.addEventListener(
+    "change",
 
-    const fileInput =
-
-        document.getElementById(
-
-            "feedback-files"
-
-        );
-
-    if (!fileInput) {
-
-        return;
-
-    }
-
-    fileInput.addEventListener(
-
-        "change",
-
-        renderSelectedAttachments
-
-    );
-
+    renderSelectedAttachments,
+  );
 }
-
 
 function showMyFeedback() {
+  renderTemplate("my-feedback-template");
 
-    renderTemplate(
-
-        "my-feedback-template"
-
-    );
-
-    loadMyFeedback();
-
+  loadMyFeedback();
 }
 
-
 function showAdminDashboard() {
+  if (AppState.currentRole !== "admin") {
+    alert("Admin access required.");
 
-    if (
+    navigate("home");
 
-        AppState.currentRole !==
-        "admin"
+    return;
+  }
 
-    ) {
+  renderTemplate("admin-template");
 
-        alert(
-
-            "Admin access required."
-
-        );
-
-        navigate(
-
-            "home"
-
-        );
-
-        return;
-
-    }
-
-    renderTemplate(
-
-        "admin-template"
-
-    );
-
-    loadAdminFeedback();
-
+  loadAdminFeedback();
 }
 
 function renderSelectedAttachments() {
+  const container = document.getElementById("selected-attachments");
 
-    const container =
+  const input = document.getElementById("feedback-files");
 
-        document.getElementById(
+  if (!container || !input) {
+    return;
+  }
 
-            "selected-attachments"
+  const files = Array.from(input.files);
 
-        );
+  if (files.length === 0) {
+    container.innerHTML = "No attachments selected";
 
-    const input =
+    return;
+  }
 
-        document.getElementById(
+  container.innerHTML = files
 
-            "feedback-files"
-
-        );
-
-    if (
-
-        !container ||
-
-        !input
-
-    ) {
-
-        return;
-
-    }
-
-    const files =
-
-        Array.from(
-
-            input.files
-
-        );
-
-    if (
-
-        files.length === 0
-
-    ) {
-
-        container.innerHTML =
-
-            "No attachments selected";
-
-        return;
-
-    }
-
-    container.innerHTML =
-
-        files
-
-            .map(
-
-                file =>
-
-                `<div class="attachment-chip">
+    .map(
+      (file) =>
+        `<div class="attachment-chip">
 
                     📎 ${file.name}
 
-                </div>`
+                </div>`,
+    )
 
-            )
-
-            .join("");
-
+    .join("");
 }
 
 /********************************************************************
@@ -804,114 +390,64 @@ function renderSelectedAttachments() {
 ********************************************************************/
 
 async function loadMyFeedback() {
+  const feedbacks = await fetchMyFeedback();
 
-    const feedbacks =
+  AppState.feedbacks = feedbacks;
 
-        await fetchMyFeedback();
+  renderFeedbackCards(
+    feedbacks,
 
-    AppState.feedbacks =
-        feedbacks;
+    {
+      showOwner: false,
 
-    renderFeedbackCards(
+      canEdit: true,
 
-        feedbacks,
+      canDelete: true,
 
-        {
-
-            showOwner:
-                false,
-
-            canEdit:
-                true,
-
-            canDelete:
-                true,
-
-            canDownload:
-                false
-
-        }
-
-    );
-
+      canDownload: false,
+    },
+  );
 }
-
 
 async function loadAdminFeedback() {
+  const feedbacks = await fetchAdminFeedback();
 
-    const feedbacks =
+  AppState.feedbacks = feedbacks;
 
-        await fetchAdminFeedback();
+  renderFeedbackCards(
+    feedbacks,
 
-    AppState.feedbacks =
-        feedbacks;
+    {
+      showOwner: true,
 
-    renderFeedbackCards(
+      canEdit: false,
 
-        feedbacks,
+      canDelete: false,
 
-        {
-
-            showOwner:
-                true,
-
-            canEdit:
-                false,
-
-            canDelete:
-                false,
-
-            canDownload:
-                true
-
-        }
-
-    );
-
+      canDownload: true,
+    },
+  );
 }
-
 
 /********************************************************************
                 FEEDBACK CARD RENDERER
 ********************************************************************/
 
 function renderFeedbackCards(
+  feedbacks,
 
-    feedbacks,
-
-    options
-
+  options,
 ) {
+  const container = document.getElementById("feedback-preview");
 
-    const container =
+  if (!container) {
+    return;
+  }
 
-        document.getElementById(
+  container.innerHTML = "";
 
-            "feedback-preview"
-
-        );
-
-    if (!container) {
-
-        return;
-
-    }
-
-    container.innerHTML =
-
-        "";
-
-    if (
-
-        !feedbacks ||
-
-        feedbacks.length === 0
-
-    ) {
-
-        container.innerHTML =
-
-        `
+  if (!feedbacks || feedbacks.length === 0) {
+    container.innerHTML = `
 
         <div class="feedback-card">
 
@@ -931,47 +467,23 @@ function renderFeedbackCards(
 
         `;
 
-        return;
+    return;
+  }
 
-    }
+  feedbacks.forEach((item) => {
+    const preview = item.content
+      ? item.content.substring(
+          0,
 
-    feedbacks.forEach(
+          120,
+        )
+      : "";
 
-        item => {
+    const card = document.createElement("div");
 
-            const preview =
+    card.className = "feedback-card";
 
-                item.content
-
-                ?
-
-                item.content.substring(
-
-                    0,
-
-                    120
-
-                )
-
-                :
-
-                "";
-
-            const card =
-
-                document.createElement(
-
-                    "div"
-
-                );
-
-            card.className =
-
-                "feedback-card";
-
-            card.innerHTML =
-
-            `
+    card.innerHTML = `
 
             <h3>
 
@@ -988,12 +500,8 @@ function renderFeedbackCards(
             </p>
 
             ${
-
-                options.showOwner
-
-                ?
-
-                `
+              options.showOwner
+                ? `
 
                 <p>
 
@@ -1004,11 +512,7 @@ function renderFeedbackCards(
                 </p>
 
                 `
-
-                :
-
-                ""
-
+                : ""
             }
 
             <p>
@@ -1038,12 +542,8 @@ function renderFeedbackCards(
                 </button>
 
                 ${
-
-                    options.canEdit
-
-                    ?
-
-                    `
+                  options.canEdit
+                    ? `
 
                     <button
 
@@ -1054,20 +554,12 @@ function renderFeedbackCards(
                     </button>
 
                     `
-
-                    :
-
-                    ""
-
+                    : ""
                 }
 
                 ${
-
-                    options.canDelete
-
-                    ?
-
-                    `
+                  options.canDelete
+                    ? `
 
                     <button
 
@@ -1078,20 +570,12 @@ function renderFeedbackCards(
                     </button>
 
                     `
-
-                    :
-
-                    ""
-
+                    : ""
                 }
 
                 ${
-
-                    options.canDownload
-
-                    ?
-
-                    `
+                  options.canDownload
+                    ? `
 
                     <button
 
@@ -1102,544 +586,233 @@ function renderFeedbackCards(
                     </button>
 
                     `
-
-                    :
-
-                    ""
-
+                    : ""
                 }
 
             </div>
 
             `;
 
-            container.appendChild(
-
-                card
-
-            );
-
-        }
-
-    );
-
+    container.appendChild(card);
+  });
 }
-
 
 /********************************************************************
                 SELECT FEEDBACK
 ********************************************************************/
 
-function findFeedback(
-
-    feedbackId
-
-) {
-
-    return AppState.feedbacks.find(
-
-        feedback =>
-
-            feedback.feedbackId ===
-
-            feedbackId
-
-    );
-
+function findFeedback(feedbackId) {
+  return AppState.feedbacks.find(
+    (feedback) => feedback.feedbackId === feedbackId,
+  );
 }
-
 
 /********************************************************************
                     VIEW
 ********************************************************************/
 
-async function viewFeedback(
+async function viewFeedback(feedbackId) {
+  AppState.selectedFeedback = findFeedback(feedbackId);
 
-    feedbackId
+  if (!AppState.selectedFeedback) {
+    alert("Feedback not found.");
 
-) {
+    return;
+  }
 
-    AppState.selectedFeedback =
-
-        findFeedback(
-
-            feedbackId
-
-        );
-
-    if (
-
-        !AppState.selectedFeedback
-
-    ) {
-
-        alert(
-
-            "Feedback not found."
-
-        );
-
-        return;
-
-    }
-
-    await loadSingleFeedback(
-
-        "view"
-
-    );
-
+  await loadSingleFeedback("view");
 }
-
 
 /********************************************************************
                     EDIT
 ********************************************************************/
 
-async function editFeedback(
+async function editFeedback(feedbackId) {
+  AppState.selectedFeedback = findFeedback(feedbackId);
 
-    feedbackId
+  if (!AppState.selectedFeedback) {
+    alert("Feedback not found.");
 
-) {
+    return;
+  }
 
-    AppState.selectedFeedback =
-
-        findFeedback(
-
-            feedbackId
-
-        );
-
-    if (
-
-        !AppState.selectedFeedback
-
-    ) {
-
-        alert(
-
-            "Feedback not found."
-
-        );
-
-        return;
-
-    }
-
-    await loadSingleFeedback(
-
-        "edit"
-
-    );
-
+  await loadSingleFeedback("edit");
 }
-
 
 /********************************************************************
                     DELETE
 ********************************************************************/
 
-async function deleteFeedback(
+async function deleteFeedback(feedbackId) {
+  const feedback = findFeedback(feedbackId);
 
-    feedbackId
+  if (!feedback) {
+    alert("Feedback not found.");
 
-) {
+    return;
+  }
 
-    const feedback =
+  const confirmed = confirm("Are you sure you want to delete this feedback?");
 
-        findFeedback(
+  if (!confirmed) {
+    return;
+  }
 
-            feedbackId
+  const accessToken = getAccessToken();
 
-        );
+  if (!accessToken) {
+    alert("Please login.");
 
-    if (
+    return;
+  }
 
-        !feedback
+  try {
+    const response = await fetch(
+      `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
 
-    ) {
+      {
+        method: "DELETE",
 
-        alert(
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
-            "Feedback not found."
-
-        );
-
-        return;
-
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
 
-    const confirmed =
+    AppState.selectedFeedback = null;
 
-        confirm(
+    alert("Feedback deleted successfully.");
 
-            "Are you sure you want to delete this feedback?"
+    await loadMyFeedback();
+  } catch (error) {
+    console.error(error);
 
-        );
-
-    if (
-
-        !confirmed
-
-    ) {
-
-        return;
-
-    }
-
-    const accessToken =
-
-        getAccessToken();
-
-    if (
-
-        !accessToken
-
-    ) {
-
-        alert(
-
-            "Please login."
-
-        );
-
-        return;
-
-    }
-
-    try {
-
-        const response =
-
-            await fetch(
-
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
-
-                {
-
-                    method:
-
-                        "DELETE",
-
-                    headers: {
-
-                        Authorization:
-
-                            `Bearer ${accessToken}`
-
-                    }
-
-                }
-
-            );
-
-        if (
-
-            !response.ok
-
-        ) {
-
-            throw new Error(
-
-                await response.text()
-
-            );
-
-        }
-
-        AppState.selectedFeedback =
-
-            null;
-
-        alert(
-
-            "Feedback deleted successfully."
-
-        );
-
-        await loadMyFeedback();
-
-    }
-
-    catch (
-
-        error
-
-    ) {
-
-        console.error(
-
-            error
-
-        );
-
-        alert(
-
-            "Unable to delete feedback."
-
-        );
-
-    }
-
+    alert("Unable to delete feedback.");
+  }
 }
-
 
 /********************************************************************
                     DOWNLOAD
 ********************************************************************/
 
-async function downloadFeedback(
-    feedbackId
-) {
+async function downloadFeedback(feedbackId) {
+  const feedback = findFeedback(feedbackId);
 
-    const feedback =
-        findFeedback(
-            feedbackId
-        );
+  if (!feedback) {
+    alert("Feedback not found.");
 
-    if (!feedback) {
+    return;
+  }
 
-        alert(
-            "Feedback not found."
-        );
+  const accessToken = getAccessToken();
 
-        return;
+  if (!accessToken) {
+    alert("Please login.");
 
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/download`,
+
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
 
-    const accessToken =
-        getAccessToken();
+    const result = await response.json();
 
-    if (!accessToken) {
-
-        alert(
-            "Please login."
-        );
-
-        return;
-
-    }
-
-    try {
-
-        const response =
-
-            await fetch(
-
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/download`,
-
-                {
-
-                    headers: {
-
-                        Authorization:
-
-                            `Bearer ${accessToken}`
-
-                    }
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-
-                await response.text()
-
-            );
-
-        }
-
-        const result =
-
-            await response.json();
-
-        /*
+    /*
         =========================
             DOWNLOAD TXT FILE
         =========================
         */
 
-        downloadTextFile(
+    downloadTextFile(
+      result.filename,
 
-            result.filename,
+      result.content,
+    );
 
-            result.content
-
-        );
-
-        /*
+    /*
         =========================
         DOWNLOAD ATTACHMENTS
         =========================
         */
 
-        await downloadAttachments(
+    await downloadAttachments(result.attachments);
+  } catch (error) {
+    console.error(error);
 
-            result.attachments
-
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(
-
-            error
-
-        );
-
-        alert(
-
-            "Unable to download feedback."
-
-        );
-
-    }
-
+    alert("Unable to download feedback.");
+  }
 }
 
 /********************************************************************
                     MODAL HANDLER
 ********************************************************************/
 
-function openFeedbackModal(
-    feedback,
-    mode
-) {
+function openFeedbackModal(feedback, mode) {
+  AppState.modalMode = mode;
 
-    AppState.modalMode =
-        mode;
+  populateFeedbackModal(feedback);
 
-    populateFeedbackModal(
-        feedback
-    );
+  setModalMode(mode);
 
-    setModalMode(
-        mode
-    );
-
-    document.getElementById(
-        "feedbackModal"
-    ).style.display =
-        "flex";
-
+  document.getElementById("feedbackModal").style.display = "flex";
 }
-
 
 function closeFeedbackModal() {
+  AppState.newAttachments = [];
 
-    AppState.newAttachments = [];
+  AppState.deletedAttachments = [];
 
-    AppState.deletedAttachments = [];
-
-    document.getElementById(
-
-        "feedbackModal"
-
-    ).style.display =
-
-        "none";
-
+  document.getElementById("feedbackModal").style.display = "none";
 }
 
+function populateFeedbackModal(feedback) {
+  document.getElementById("feedbackTitle").value = feedback.title || "";
 
-function populateFeedbackModal(
+  document.getElementById("feedbackContent").value = feedback.content || "";
 
-    feedback
+  document.getElementById("feedbackCreated").value = feedback.createdAt || "";
 
-) {
+  document.getElementById("feedbackUpdated").value = feedback.lastUpdated || "";
 
-    document.getElementById(
+  const container = document.getElementById("feedbackAttachments");
 
-        "feedbackTitle"
+  container.innerHTML = "";
 
-    ).value =
+  const existing = feedback.attachments || [];
 
-        feedback.title || "";
+  existing.forEach((attachment) => {
+    if (
+      AppState.deletedAttachments.some(
+        (file) => file.filename === attachment.filename,
+      )
+    ) {
+      return;
+    }
 
-    document.getElementById(
-
-        "feedbackContent"
-
-    ).value =
-
-        feedback.content || "";
-
-    document.getElementById(
-
-        "feedbackCreated"
-
-    ).value =
-
-        feedback.createdAt || "";
-
-    document.getElementById(
-
-        "feedbackUpdated"
-
-    ).value =
-
-        feedback.lastUpdated || "";
-
-    const container =
-
-        document.getElementById(
-
-            "feedbackAttachments"
-
-        );
-
-    container.innerHTML = "";
-
-    const existing =
-
-        feedback.attachments || [];
-
-    existing.forEach(
-
-        attachment => {
-
-            if (
-
-                AppState.deletedAttachments.some(
-
-                    file =>
-
-                        file.filename ===
-
-                        attachment.filename
-
-                )
-
-            ) {
-
-                return;
-
-            }
-
-            let html =
-
-                `<div class="modal-attachment">
+    let html = `<div class="modal-attachment">
 
                     📎 ${attachment.filename}
                 
                 </div>`;
 
-            if (
-
-                AppState.modalMode ===
-
-                "edit"
-
-            ) {
-
-                html +=
-
-                `
+    if (AppState.modalMode === "edit") {
+      html += `
 
                 <button
 
@@ -1653,28 +826,15 @@ function populateFeedbackModal(
                 </button>
 
                 `;
+    }
 
-            }
+    html += `</div>`;
 
-            html +=
+    container.innerHTML += html;
+  });
 
-                `</div>`;
-
-            container.innerHTML +=
-
-                html;
-
-        }
-
-    );
-
-    AppState.newAttachments.forEach(
-
-        file => {
-
-            container.innerHTML +=
-
-            `
+  AppState.newAttachments.forEach((file) => {
+    container.innerHTML += `
 
             <div class="modal-attachment">
 
@@ -1697,352 +857,153 @@ function populateFeedbackModal(
             </div>
 
             `;
+  });
 
-        }
-
-    );
-
-    if (
-
-        container.innerHTML ===
-
-        ""
-
-    ) {
-
-        container.innerHTML =
-
-            "No attachments";
-
-    }
-
+  if (container.innerHTML === "") {
+    container.innerHTML = "No attachments";
+  }
 }
 
+function setModalMode(mode) {
+  AppState.modalMode = mode;
 
-function setModalMode(
-    mode
-) {
+  const title = document.getElementById("feedbackTitle");
 
-    AppState.modalMode =
-        mode;
+  const content = document.getElementById("feedbackContent");
 
-    const title =
-        document.getElementById(
-            "feedbackTitle"
-        );
+  const subtitle = document.getElementById("modalSubtitle");
 
-    const content =
-        document.getElementById(
-            "feedbackContent"
-        );
+  const closeButton = document.getElementById("closeBtn");
 
-    const subtitle =
-        document.getElementById(
-            "modalSubtitle"
-        );
+  const editButton = document.getElementById("editBtn");
 
-    const closeButton =
-        document.getElementById(
-            "closeBtn"
-        );
+  const deleteButton = document.getElementById("deleteBtn");
 
-    const editButton =
-        document.getElementById(
-            "editBtn"
-        );
+  const downloadButton = document.getElementById("downloadBtn");
 
-    const deleteButton =
-        document.getElementById(
-            "deleteBtn"
-        );
+  const saveButton = document.getElementById("saveBtn");
 
-    const downloadButton =
-        document.getElementById(
-            "downloadBtn"
-        );
+  if (mode === "edit") {
+    title.readOnly = false;
 
-    const saveButton =
-        document.getElementById(
-            "saveBtn"
-        );
+    content.readOnly = false;
 
-    if (
-        mode === "edit"
-    ) {
+    subtitle.textContent = "Editing Feedback";
 
-        title.readOnly =
-            false;
+    closeButton.textContent = "Cancel";
 
-        content.readOnly =
-            false;
+    editButton.style.display = "none";
 
-        subtitle.textContent =
-            "Editing Feedback";
+    deleteButton.style.display = "none";
 
-        closeButton.textContent =
-            "Cancel";
+    downloadButton.style.display = "none";
 
-        editButton.style.display =
-            "none";
+    saveButton.style.display = "inline-block";
 
-        deleteButton.style.display =
-            "none";
+    document.getElementById("modalUploadSection").style.display = "flex";
 
-        downloadButton.style.display =
-            "none";
+    initializeModalAttachments();
+  } else {
+    title.readOnly = true;
 
-        saveButton.style.display =
-            "inline-block";
+    content.readOnly = true;
 
-        document.getElementById(
+    subtitle.textContent = "Viewing Feedback";
 
-            "modalUploadSection"
+    closeButton.textContent = "Close";
 
-        ).style.display =
+    editButton.style.display = "inline-block";
 
-            "flex";
+    deleteButton.style.display = "inline-block";
 
-        initializeModalAttachments();            
+    downloadButton.style.display = "inline-block";
 
-    }
+    saveButton.style.display = "none";
 
-    else {
-
-        title.readOnly =
-            true;
-
-        content.readOnly =
-            true;
-
-        subtitle.textContent =
-            "Viewing Feedback";
-
-        closeButton.textContent =
-            "Close";
-
-        editButton.style.display =
-            "inline-block";
-
-        deleteButton.style.display =
-            "inline-block";
-
-        downloadButton.style.display =
-            "inline-block";
-
-        saveButton.style.display =
-            "none";
-
-        document.getElementById(
-
-            "modalUploadSection"
-
-        ).style.display =
-
-            "none";
-
-        AppState.newAttachments = [];
-
-        AppState.deletedAttachments = [];            
-
-    }
-
-}
-
-
-function switchToEditMode() {
+    document.getElementById("modalUploadSection").style.display = "none";
 
     AppState.newAttachments = [];
 
     AppState.deletedAttachments = [];
-
-    openFeedbackModal(
-
-        AppState.selectedFeedback,
-
-        "edit"
-
-    );
-
+  }
 }
 
+function switchToEditMode() {
+  AppState.newAttachments = [];
+
+  AppState.deletedAttachments = [];
+
+  openFeedbackModal(
+    AppState.selectedFeedback,
+
+    "edit",
+  );
+}
 
 function deleteSelectedFeedback() {
+  if (!AppState.selectedFeedback) {
+    return;
+  }
 
-    if (
-        !AppState.selectedFeedback
-    ) {
+  closeFeedbackModal();
 
-        return;
-
-    }
-
-    closeFeedbackModal();
-
-    deleteFeedback(
-
-        AppState.selectedFeedback.feedbackId
-
-    );
-
+  deleteFeedback(AppState.selectedFeedback.feedbackId);
 }
 
-
 function downloadSelectedFeedback() {
+  if (!AppState.selectedFeedback) {
+    return;
+  }
 
-    if (
-
-        !AppState.selectedFeedback
-
-    ) {
-
-        return;
-
-    }
-
-    downloadFeedback(
-
-        AppState.selectedFeedback.feedbackId
-
-    );
-
+  downloadFeedback(AppState.selectedFeedback.feedbackId);
 }
 
 function initializeModalAttachments() {
+  const input = document.getElementById("modalAttachmentInput");
 
-    const input =
+  if (!input) {
+    return;
+  }
 
-        document.getElementById(
+  input.onchange = function () {
+    const files = Array.from(input.files);
 
-            "modalAttachmentInput"
+    AppState.newAttachments.push(...files);
 
-        );
-
-    if (!input) {
-
-        return;
-
-    }
-
-    input.onchange = function () {
-
-        const files =
-
-            Array.from(
-
-                input.files
-
-            );
-
-        AppState.newAttachments.push(
-
-            ...files
-
-        );
-
-        populateFeedbackModal(
-
-            AppState.selectedFeedback
-
-        );
-
-    };
-
+    populateFeedbackModal(AppState.selectedFeedback);
+  };
 }
 
-function removeExistingAttachment(
+function removeExistingAttachment(filename) {
+  const attachment = AppState.selectedFeedback.attachments.find(
+    (file) => file.filename === filename,
+  );
 
-    filename
+  if (attachment) {
+    AppState.deletedAttachments.push(attachment);
+  }
 
-) {
-
-    const attachment =
-
-        AppState.selectedFeedback
-
-            .attachments
-
-            .find(
-
-                file =>
-
-                    file.filename ===
-
-                    filename
-
-            );
-
-    if (
-
-        attachment
-
-    ) {
-
-        AppState.deletedAttachments.push(
-
-            attachment
-
-        );
-
-    }
-
-    populateFeedbackModal(
-
-        AppState.selectedFeedback
-
-    );
-
+  populateFeedbackModal(AppState.selectedFeedback);
 }
 
-function removeNewAttachment(
+function removeNewAttachment(filename) {
+  AppState.newAttachments = AppState.newAttachments.filter(
+    (file) => file.name !== filename,
+  );
 
-    filename
-
-) {
-
-    AppState.newAttachments =
-
-        AppState.newAttachments.filter(
-
-            file =>
-
-                file.name !==
-
-                filename
-
-        );
-
-    populateFeedbackModal(
-
-        AppState.selectedFeedback
-
-    );
-
+  populateFeedbackModal(AppState.selectedFeedback);
 }
-
 
 window.addEventListener(
+  "click",
 
-    "click",
+  function (event) {
+    const modal = document.getElementById("feedbackModal");
 
-    function (
-        event
-    ) {
-
-        const modal =
-            document.getElementById(
-                "feedbackModal"
-            );
-
-        if (
-            event.target === modal
-        ) {
-
-            closeFeedbackModal();
-
-        }
-
+    if (event.target === modal) {
+      closeFeedbackModal();
     }
-
+  },
 );
 
 /********************************************************************
@@ -2050,423 +1011,227 @@ window.addEventListener(
 ********************************************************************/
 
 async function saveFeedback() {
+  const accessToken = getAccessToken();
 
-    const accessToken =
-        getAccessToken();
+  if (!accessToken) {
+    alert("Please login.");
 
-    if (!accessToken) {
+    return;
+  }
 
-        alert(
-            "Please login."
-        );
+  const feedback = AppState.selectedFeedback;
 
-        return;
+  if (!feedback) {
+    alert("No feedback selected.");
 
-    }
+    return;
+  }
 
-    const feedback =
-        AppState.selectedFeedback;
+  const title = document.getElementById("feedbackTitle").value.trim();
 
-    if (!feedback) {
+  const content = document.getElementById("feedbackContent").value.trim();
 
-        alert(
-            "No feedback selected."
-        );
+  const newAttachments = AppState.newAttachments.map((file) => ({
+    filename: file.name,
 
-        return;
+    contentType: file.type,
+  }));
 
-    }
+  const deletedAttachments = AppState.deletedAttachments;
 
-    const title =
-        document.getElementById(
-            "feedbackTitle"
-        ).value.trim();
-
-    const content =
-        document.getElementById(
-            "feedbackContent"
-        ).value.trim();
-
-    const newAttachments =
-        AppState.newAttachments.map(
-
-            file => ({
-
-                filename:
-                    file.name,
-
-                contentType:
-                    file.type
-
-            })
-
-        );
-
-    const deletedAttachments =
-        AppState.deletedAttachments;
-
-    try {
-
-        /*
+  try {
+    /*
         =====================
                 INIT
         =====================
         */
 
-        const initResponse =
+    const initResponse = await fetch(
+      `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/init`,
 
-            await fetch(
+      {
+        method: "PUT",
 
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/init`,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
 
-                {
+          "Content-Type": "application/json",
+        },
 
-                    method:
-                        "PUT",
+        body: JSON.stringify({
+          title,
 
-                    headers: {
+          content,
 
-                        Authorization:
-                            `Bearer ${accessToken}`,
+          newAttachments,
 
-                        "Content-Type":
-                            "application/json"
+          deletedAttachments,
+        }),
+      },
+    );
 
-                    },
+    if (!initResponse.ok) {
+      throw new Error(await initResponse.text());
+    }
 
-                    body:
+    const initResult = await initResponse.json();
 
-                        JSON.stringify({
-
-                            title,
-
-                            content,
-
-                            newAttachments,
-
-                            deletedAttachments
-
-                        })
-
-                }
-
-            );
-
-        if (!initResponse.ok) {
-
-            throw new Error(
-
-                await initResponse.text()
-
-            );
-
-        }
-
-        const initResult =
-
-            await initResponse.json();
-
-        /*
+    /*
         =====================
             UPLOAD FILES
         =====================
         */
 
-        await uploadFiles(
+    await uploadFiles(
+      initResult.uploads,
 
-            initResult.uploads,
+      AppState.newAttachments,
+    );
 
-            AppState.newAttachments
-
-        );
-
-        /*
+    /*
         =====================
                 COMPLETE
         =====================
         */
 
-        const completeResponse =
+    const completeResponse = await fetch(
+      `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/complete`,
 
-            await fetch(
+      {
+        method: "PUT",
 
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}/complete`,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
 
-                {
+          "Content-Type": "application/json",
+        },
 
-                    method:
-                        "PUT",
+        body: JSON.stringify({
+          title,
 
-                    headers: {
+          content,
 
-                        Authorization:
-                            `Bearer ${accessToken}`,
+          newAttachments,
 
-                        "Content-Type":
-                            "application/json"
+          deletedAttachments,
+        }),
+      },
+    );
 
-                    },
-
-                    body:
-
-                        JSON.stringify({
-
-                            title,
-
-                            content,
-
-                            newAttachments,
-
-                            deletedAttachments
-
-                        })
-
-                }
-
-            );
-
-        if (!completeResponse.ok) {
-
-            throw new Error(
-
-                await completeResponse.text()
-
-            );
-
-        }
-
-        AppState.newAttachments = [];
-
-        AppState.deletedAttachments = [];
-
-        closeFeedbackModal();
-
-        await loadMyFeedback();
-
-        AppState.selectedFeedback = null;
-
-        alert(
-            "Feedback updated successfully."
-        );
-
+    if (!completeResponse.ok) {
+      throw new Error(await completeResponse.text());
     }
 
-    catch (error) {
+    AppState.newAttachments = [];
 
-        console.error(error);
+    AppState.deletedAttachments = [];
 
-        alert(
-            "Unable to update feedback."
-        );
+    closeFeedbackModal();
 
-    }
+    await loadMyFeedback();
 
+    AppState.selectedFeedback = null;
+
+    alert("Feedback updated successfully.");
+  } catch (error) {
+    console.error(error);
+
+    alert("Unable to update feedback.");
+  }
 }
 
 async function uploadFiles(
+  uploads,
 
-    uploads,
-
-    files
-
+  files,
 ) {
+  for (const upload of uploads) {
+    const file = files.find((f) => f.name === upload.filename);
 
-    for (const upload of uploads) {
-
-        const file =
-
-            files.find(
-
-                f =>
-
-                    f.name ===
-
-                    upload.filename
-
-            );
-
-        if (!file) {
-
-            throw new Error(
-
-                `Missing file ${upload.filename}`
-
-            );
-
-        }
-
-        const response =
-
-            await fetch(
-
-                upload.uploadUrl,
-
-                {
-
-                    method:
-
-                        "PUT",
-
-                    headers: {
-
-                        "Content-Type":
-
-                            upload.contentType
-
-                    },
-
-                    body:
-
-                        file
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-
-                `Failed to upload ${upload.filename}`
-
-            );
-
-        }
-
+    if (!file) {
+      throw new Error(`Missing file ${upload.filename}`);
     }
 
+    const response = await fetch(
+      upload.uploadUrl,
+
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type": upload.contentType,
+        },
+
+        body: file,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload ${upload.filename}`);
+    }
+  }
 }
 
 function downloadTextFile(
+  filename,
 
-    filename,
-
-    content
-
+  content,
 ) {
+  const blob = new Blob(
+    [content],
 
-    const blob =
+    {
+      type: "text/plain",
+    },
+  );
 
-        new Blob(
+  const url = window.URL.createObjectURL(blob);
 
-            [
+  const link = document.createElement("a");
 
-                content
+  link.href = url;
 
-            ],
+  link.download = filename;
 
-            {
+  document.body.appendChild(link);
 
-                type:
+  link.click();
 
-                    "text/plain"
+  link.remove();
 
-            }
+  window.URL.revokeObjectURL(url);
+}
 
-        );
+async function downloadAttachments(attachments) {
+  for (const attachment of attachments) {
+    const response = await fetch(attachment.downloadUrl);
 
-    const url =
+    if (!response.ok) {
+      console.error("Failed to download", attachment.filename);
 
-        window.URL.createObjectURL(
+      continue;
+    }
 
-            blob
+    const blob = await response.blob();
 
-        );
+    const url = window.URL.createObjectURL(blob);
 
-    const link =
+    const link = document.createElement("a");
 
-        document.createElement(
+    link.href = url;
 
-            "a"
+    link.download = attachment.filename;
 
-        );
-
-    link.href =
-
-        url;
-
-    link.download =
-
-        filename;
-
-    document.body.appendChild(
-
-        link
-
-    );
+    document.body.appendChild(link);
 
     link.click();
 
     link.remove();
 
-    window.URL.revokeObjectURL(
+    window.URL.revokeObjectURL(url);
 
-        url
-
-    );
-
-}
-
-async function downloadAttachments(
-    attachments
-) {
-
-    for (const attachment of attachments) {
-
-        const response = await fetch(
-            attachment.downloadUrl
-        );
-
-        if (!response.ok) {
-
-            console.error(
-                "Failed to download",
-                attachment.filename
-            );
-
-            continue;
-        }
-
-        const blob =
-            await response.blob();
-
-        const url =
-            window.URL.createObjectURL(
-                blob
-            );
-
-        const link =
-            document.createElement(
-                "a"
-            );
-
-        link.href = url;
-
-        link.download =
-            attachment.filename;
-
-        document.body.appendChild(
-            link
-        );
-
-        link.click();
-
-        link.remove();
-
-        window.URL.revokeObjectURL(
-            url
-        );
-
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    200
-                )
-        );
-
-    }
-
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
 }
 
 /********************************************************************
@@ -2474,535 +1239,298 @@ async function downloadAttachments(
 ********************************************************************/
 
 async function submitFeedback() {
+  const titleElement = document.getElementById("feedback-title");
 
-    const titleElement =
-        document.getElementById(
-            "feedback-title"
-        );
+  const contentElement = document.getElementById("feedback");
 
-    const contentElement =
-        document.getElementById(
-            "feedback"
-        );
+  const fileInput = document.getElementById("feedback-files");
 
-    const fileInput =
-        document.getElementById(
-            "feedback-files"
-        );
+  const anonymousElement = document.getElementById("anonymous");
 
-    const anonymousElement =
-        document.getElementById(
-            "anonymous"
-        );
+  const messageElement = document.getElementById("message");
 
-    const messageElement =
-        document.getElementById(
-            "message"
-        );
+  const title = titleElement.value.trim();
 
-    const title =
-        titleElement.value.trim();
+  const content = contentElement.value.trim();
 
-    const content =
-        contentElement.value.trim();
+  if (!title || !content) {
+    messageElement.innerHTML = "Please enter a title and feedback.";
 
-    if (!title || !content) {
+    return;
+  }
 
-        messageElement.innerHTML =
-            "Please enter a title and feedback.";
+  const files = Array.from(fileInput.files);
 
-        return;
+  const attachments = files.map((file) => ({
+    filename: file.name,
 
+    contentType: file.type,
+  }));
+
+  const anonymous = anonymousElement.checked;
+
+  const initEndpoint = anonymous
+    ? `${API_URL}/anonymous/init`
+    : `${API_URL}/init`;
+
+  const completeEndpoint = anonymous
+    ? `${API_URL}/anonymous/complete`
+    : `${API_URL}/complete`;
+
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (!anonymous) {
+    const accessToken = getAccessToken();
+
+    if (!accessToken) {
+      messageElement.innerHTML = "Please login or submit anonymously.";
+
+      return;
     }
 
-    const files =
-        Array.from(
-            fileInput.files
-        );
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
 
-    const attachments =
-        files.map(
-
-            file => ({
-
-                filename:
-                    file.name,
-
-                contentType:
-                    file.type
-
-            })
-
-        );
-
-    const anonymous =
-        anonymousElement.checked;
-
-    const initEndpoint =
-        anonymous
-        ?
-        `${API_URL}/anonymous/init`
-        :
-        `${API_URL}/init`;
-
-    const completeEndpoint =
-        anonymous
-        ?
-        `${API_URL}/anonymous/complete`
-        :
-        `${API_URL}/complete`;
-
-    const headers = {
-
-        "Content-Type":
-            "application/json"
-
-    };
-
-    if (!anonymous) {
-
-        const accessToken =
-            getAccessToken();
-
-        if (!accessToken) {
-
-            messageElement.innerHTML =
-                "Please login or submit anonymously.";
-
-            return;
-
-        }
-
-        headers.Authorization =
-            `Bearer ${accessToken}`;
-
-    }
-
-    try {
-
-        /*
+  try {
+    /*
         ============================
                 INIT
         ============================
         */
 
-        const initResponse =
+    const initResponse = await fetch(
+      initEndpoint,
 
-            await fetch(
+      {
+        method: "POST",
 
-                initEndpoint,
+        headers,
 
-                {
+        body: JSON.stringify({
+          attachments,
+        }),
+      },
+    );
 
-                    method:
-                        "POST",
+    if (!initResponse.ok) {
+      throw new Error(await initResponse.text());
+    }
 
-                    headers,
+    const initResult = await initResponse.json();
 
-                    body:
-
-                        JSON.stringify({
-
-                            attachments
-
-                        })
-
-                }
-
-            );
-
-        if (!initResponse.ok) {
-
-            throw new Error(
-
-                await initResponse.text()
-
-            );
-
-        }
-
-        const initResult =
-
-            await initResponse.json();
-
-        /*
+    /*
         ============================
             UPLOAD TO S3
         ============================
         */
 
-        await uploadFiles(
+    await uploadFiles(
+      initResult.uploads,
 
-            initResult.uploads,
+      files,
+    );
 
-            files
-
-        );
-
-        /*
+    /*
         ============================
                 COMPLETE
         ============================
         */
 
-        const completeBody = {
+    const completeBody = {
+      feedbackId: initResult.feedbackId,
 
-            feedbackId:
-                initResult.feedbackId,
+      title,
 
-            title,
+      content,
 
-            content,
+      attachments,
+    };
 
-            attachments
-
-        };
-
-        if (anonymous) {
-
-            completeBody.ownerId =
-                initResult.ownerId;
-
-        }
-
-        const completeResponse =
-
-            await fetch(
-
-                completeEndpoint,
-
-                {
-
-                    method:
-                        "POST",
-
-                    headers,
-
-                    body:
-
-                        JSON.stringify(
-
-                            completeBody
-
-                        )
-
-                }
-
-            );
-
-        if (!completeResponse.ok) {
-
-            throw new Error(
-
-                await completeResponse.text()
-
-            );
-
-        }
-
-        messageElement.innerHTML =
-
-            "Feedback submitted successfully.";
-
-        titleElement.value = "";
-
-        contentElement.value = "";
-
-        fileInput.value = "";
-
-        document.getElementById(
-
-            "selected-attachments"
-
-        ).innerHTML =
-
-            "No attachments selected";
-
-        AppState.newAttachments = [];
-
-        AppState.deletedAttachments = [];
-
+    if (anonymous) {
+      completeBody.ownerId = initResult.ownerId;
     }
 
-    catch (error) {
+    const completeResponse = await fetch(
+      completeEndpoint,
 
-        console.error(error);
+      {
+        method: "POST",
 
-        messageElement.innerHTML =
+        headers,
 
-            "Unable to submit feedback.";
+        body: JSON.stringify(completeBody),
+      },
+    );
 
+    if (!completeResponse.ok) {
+      throw new Error(await completeResponse.text());
     }
 
+    messageElement.innerHTML = "Feedback submitted successfully.";
+
+    titleElement.value = "";
+
+    contentElement.value = "";
+
+    fileInput.value = "";
+
+    document.getElementById("selected-attachments").innerHTML =
+      "No attachments selected";
+
+    AppState.newAttachments = [];
+
+    AppState.deletedAttachments = [];
+  } catch (error) {
+    console.error(error);
+
+    messageElement.innerHTML = "Unable to submit feedback.";
+  }
 }
-
 
 /********************************************************************
                     FETCH APIs
 ********************************************************************/
 
 async function fetchMyFeedback() {
+  const accessToken = getAccessToken();
 
-    const accessToken =
+  if (!accessToken) {
+    alert("Please login.");
 
-        getAccessToken();
+    return [];
+  }
 
-    if (!accessToken) {
+  try {
+    const response = await fetch(
+      API_URL,
 
-        alert(
-            "Please login."
-        );
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
-        return [];
-
+    if (!response.ok) {
+      throw new Error("Unable to fetch feedback");
     }
 
-    try {
+    return await response.json();
+  } catch (error) {
+    console.error(error);
 
-        const response =
-
-            await fetch(
-
-                API_URL,
-
-                {
-
-                    headers: {
-
-                        Authorization:
-
-                            `Bearer ${accessToken}`
-
-                    }
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-
-                "Unable to fetch feedback"
-
-            );
-
-        }
-
-        return await response.json();
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        return [];
-
-    }
-
+    return [];
+  }
 }
-
 
 async function fetchAdminFeedback() {
+  const accessToken = getAccessToken();
 
-    const accessToken =
+  if (!accessToken) {
+    alert("Please login.");
 
-        getAccessToken();
+    return [];
+  }
 
-    if (!accessToken) {
+  try {
+    const response = await fetch(
+      `${API_URL}/admin`,
 
-        alert(
-            "Please login."
-        );
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
-        return [];
-
+    if (!response.ok) {
+      throw new Error("Unable to fetch feedback");
     }
 
-    try {
+    return await response.json();
+  } catch (error) {
+    console.error(error);
 
-        const response =
-
-            await fetch(
-
-                `${API_URL}/admin`,
-
-                {
-
-                    headers: {
-
-                        Authorization:
-
-                            `Bearer ${accessToken}`
-
-                    }
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-
-                "Unable to fetch feedback"
-
-            );
-
-        }
-
-        return await response.json();
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        return [];
-
-    }
-
+    return [];
+  }
 }
-
 
 /********************************************************************
                 LOAD SINGLE FEEDBACK
 ********************************************************************/
 
-async function loadSingleFeedback(
+async function loadSingleFeedback(mode) {
+  const accessToken = getAccessToken();
 
-    mode
+  if (!accessToken) {
+    alert("Please login.");
 
-) {
+    return;
+  }
 
-    const accessToken =
+  const feedback = AppState.selectedFeedback;
 
-        getAccessToken();
+  if (!feedback) {
+    alert("Feedback not found.");
 
-    if (!accessToken) {
+    return;
+  }
 
-        alert(
-            "Please login."
-        );
+  try {
+    const response = await fetch(
+      `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
 
-        return;
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
 
-    const feedback =
+    const item = await response.json();
 
-        AppState.selectedFeedback;
+    AppState.selectedFeedback = item;
 
-    if (!feedback) {
+    openFeedbackModal(
+      item,
 
-        alert(
-            "Feedback not found."
-        );
+      mode,
+    );
+  } catch (error) {
+    console.error(error);
 
-        return;
-
-    }
-
-    try {
-
-        const response =
-
-            await fetch(
-
-                `${API_URL}/${feedback.ownerId}/${feedback.feedbackId}`,
-
-                {
-
-                    headers: {
-
-                        Authorization:
-
-                            `Bearer ${accessToken}`
-
-                    }
-
-                }
-
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-
-                await response.text()
-
-            );
-
-        }
-
-        const item =
-
-            await response.json();
-
-        AppState.selectedFeedback =
-
-            item;
-
-        openFeedbackModal(
-
-            item,
-
-            mode
-
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        alert(
-
-            "Unable to retrieve feedback."
-
-        );
-
-    }
-
+    alert("Unable to retrieve feedback.");
+  }
 }
-
 
 /********************************************************************
                     APPLICATION STARTUP
 ********************************************************************/
 
 async function initializeApplication() {
+  await handleAuthCallback();
 
-    await handleAuthCallback();
+  updateUserStatus();
 
-    updateUserStatus();
+  initializeNavigation();
 
-    initializeNavigation();
-
-    navigate(
-
-        "home"
-
-    );
-
+  navigate("home");
 }
-
 
 /********************************************************************
                     WINDOW LOAD
 ********************************************************************/
 
 window.addEventListener(
+  "load",
 
-    "load",
-
-    async () => {
-
-        await initializeApplication();
-
-    }
-
+  async () => {
+    await initializeApplication();
+  },
 );
