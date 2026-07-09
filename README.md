@@ -1,6 +1,6 @@
 # Tring Internship Projects
 
-This repository contains all projects completed during my AWS Cloud & Serverless Internship at TringApps.
+This repository contains all projects completed during my Internship at TringApps.
 
 ## Branches
 
