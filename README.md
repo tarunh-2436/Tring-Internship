@@ -403,7 +403,3 @@ terraform destroy -var="admin_email=you@example.com"
 ```
 
 This removes the Terraform-managed AWS resources created by the stack. The remote Terraform backend used for state is external to the application stack and is not destroyed by this command.
-
-## License
-
-This project is licensed under the MIT License.
